@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeSwitcherToggle } from "@/components/elements/theme-switcher-toggle";
 import { generateSessionId } from "@/lib/nanoid";
-import { GithubLogo } from "@/components/logos/github";
+import { CrafterStationLogo } from "@/components/logos/crafter-station";
 import { MoralejaDesignLogo } from "@/components/logos/moraleja-design";
 import { KeboLogo } from "@/components/logos/kebo";
 import { SupabaseLogo } from "@/components/logos/supabase";
@@ -39,6 +39,57 @@ interface CatConfig {
   setter: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
 }
 
+const getResponsivePositions = () => {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const centerX = vw / 2;
+  const centerY = vh / 2;
+  
+  const isMobile = vw < 640;
+  const catSize = isMobile ? 70 : 160;
+  
+  let positions;
+  let startPositions;
+  
+  if (isMobile) {
+    // Position cats in corners on mobile to avoid hero overlap
+    const padding = 10;
+    const topY = padding;
+    const bottomY = vh - catSize - padding;
+    
+    positions = {
+      blue: { x: padding, y: topY },
+      purple: { x: padding, y: bottomY },
+      yellow: { x: vw - catSize - padding, y: topY },
+      green: { x: vw - catSize - padding, y: bottomY },
+    };
+    startPositions = {
+      blue: { x: -150, y: topY },
+      purple: { x: -150, y: bottomY },
+      yellow: { x: vw + 150, y: topY },
+      green: { x: vw + 150, y: bottomY },
+    };
+  } else {
+    const baseOffset = Math.min(vw * 0.22, 280);
+    const verticalOffset = 180;
+    
+    positions = {
+      blue: { x: centerX - baseOffset - catSize / 2, y: centerY - verticalOffset },
+      purple: { x: centerX - baseOffset - catSize / 2, y: centerY + verticalOffset / 2 },
+      yellow: { x: centerX + baseOffset - catSize / 2, y: centerY - verticalOffset },
+      green: { x: centerX + baseOffset - catSize / 2, y: centerY + verticalOffset / 2 },
+    };
+    startPositions = {
+      blue: { x: -200, y: centerY - verticalOffset },
+      purple: { x: -200, y: centerY + verticalOffset / 2 },
+      yellow: { x: vw + 200, y: centerY - verticalOffset },
+      green: { x: vw + 200, y: centerY + verticalOffset / 2 },
+    };
+  }
+  
+  return { positions, startPositions, isMobile, catSize };
+};
+
 export default function Home() {
   const router = useRouter();
   const playSound = useCatSound();
@@ -46,9 +97,11 @@ export default function Home() {
   const [isCreating, setIsCreating] = useState(false);
   
   const [animationPhase, setAnimationPhase] = useState<'animating' | 'complete'>('animating');
+  const animationPhaseRef = useRef<'animating' | 'complete'>('animating');
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
   const [showCursor, setShowCursor] = useState(true);
   const [activeCat, setActiveCat] = useState(-1);
+  const [isMobile, setIsMobile] = useState(false);
   
   const [catBluePos, setCatBluePos] = useState({ x: -200, y: -200 });
   const [catPurplePos, setCatPurplePos] = useState({ x: -200, y: -200 });
@@ -61,40 +114,33 @@ export default function Home() {
     yellow: { x: 0, y: 0 },
     green: { x: 0, y: 0 },
   });
+
+  useEffect(() => {
+    animationPhaseRef.current = animationPhase;
+  }, [animationPhase]);
   
   useEffect(() => {
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    const offset = 280;
+    const { positions, startPositions, isMobile: mobile } = getResponsivePositions();
+    setIsMobile(mobile);
     
-    finalPositionsRef.current = {
-      blue: { x: centerX - offset - 80, y: centerY - 180 },
-      purple: { x: centerX - offset - 70, y: centerY + 80 },
-      yellow: { x: centerX + offset - 70, y: centerY - 180 },
-      green: { x: centerX + offset - 72, y: centerY + 80 },
-    };
-    
-    const startPositions = {
-      blue: { x: -200, y: centerY - 180 },
-      purple: { x: -200, y: centerY + 80 },
-      yellow: { x: window.innerWidth + 200, y: centerY - 180 },
-      green: { x: window.innerWidth + 200, y: centerY + 80 },
-    };
+    finalPositionsRef.current = positions;
     
     const cats: CatConfig[] = [
-      { id: 'blue', startPos: startPositions.blue, endPos: finalPositionsRef.current.blue, setter: setCatBluePos },
-      { id: 'purple', startPos: startPositions.purple, endPos: finalPositionsRef.current.purple, setter: setCatPurplePos },
-      { id: 'yellow', startPos: startPositions.yellow, endPos: finalPositionsRef.current.yellow, setter: setCatYellowPos },
-      { id: 'green', startPos: startPositions.green, endPos: finalPositionsRef.current.green, setter: setCatGreenPos },
+      { id: 'blue', startPos: startPositions.blue, endPos: positions.blue, setter: setCatBluePos },
+      { id: 'purple', startPos: startPositions.purple, endPos: positions.purple, setter: setCatPurplePos },
+      { id: 'yellow', startPos: startPositions.yellow, endPos: positions.yellow, setter: setCatYellowPos },
+      { id: 'green', startPos: startPositions.green, endPos: positions.green, setter: setCatGreenPos },
     ];
     
     const animateCat = (cat: CatConfig, duration: number): Promise<void> => {
       return new Promise((resolve) => {
         const startTime = performance.now();
         const { startPos, endPos, setter } = cat;
+        const currentMobile = window.innerWidth < 640;
+        const cursorOffset = currentMobile ? 30 : 60;
         
         setter(startPos);
-        setCursorPos({ x: startPos.x + 60, y: startPos.y + 60 });
+        setCursorPos({ x: startPos.x + cursorOffset, y: startPos.y + cursorOffset });
         
         const animate = (currentTime: number) => {
           const elapsed = currentTime - startTime;
@@ -105,7 +151,7 @@ export default function Home() {
           const newY = startPos.y + (endPos.y - startPos.y) * easedProgress;
           
           setter({ x: newX, y: newY });
-          setCursorPos({ x: newX + 60, y: newY + 60 });
+          setCursorPos({ x: newX + cursorOffset, y: newY + cursorOffset });
           
           if (progress < 1) {
             requestAnimationFrame(animate);
@@ -135,15 +181,13 @@ export default function Home() {
     runAnimation();
     
     const handleResize = () => {
-      if (animationPhase === 'complete') {
-        const newCenterX = window.innerWidth / 2;
-        const newCenterY = window.innerHeight / 2;
-        const newOffset = 280;
-        
-        setCatBluePos({ x: newCenterX - newOffset - 80, y: newCenterY - 180 });
-        setCatPurplePos({ x: newCenterX - newOffset - 70, y: newCenterY + 80 });
-        setCatYellowPos({ x: newCenterX + newOffset - 70, y: newCenterY - 180 });
-        setCatGreenPos({ x: newCenterX + newOffset - 72, y: newCenterY + 80 });
+      if (animationPhaseRef.current === 'complete') {
+        const { positions, isMobile: mobile } = getResponsivePositions();
+        setIsMobile(mobile);
+        setCatBluePos(positions.blue);
+        setCatPurplePos(positions.purple);
+        setCatYellowPos(positions.yellow);
+        setCatGreenPos(positions.green);
       }
     };
     
@@ -266,7 +310,7 @@ export default function Home() {
       <div
         ref={catBlueRef}
         onMouseDown={(e) => handleMouseDown(e, "blue")}
-        className={`fixed hidden sm:block z-40 select-none ${
+        className={`fixed z-[60] select-none ${
           animationPhase === 'complete' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         } ${activeCat >= 0 || animationPhase === 'complete' ? 'opacity-100' : 'opacity-0'}`}
         style={{
@@ -277,8 +321,8 @@ export default function Home() {
         <Image
           src="/cat-blue.svg"
           alt=""
-          width={160}
-          height={160}
+          width={isMobile ? 70 : 160}
+          height={isMobile ? 70 : 160}
           className="pointer-events-none"
           draggable={false}
         />
@@ -286,7 +330,7 @@ export default function Home() {
       <div
         ref={catPurpleRef}
         onMouseDown={(e) => handleMouseDown(e, "purple")}
-        className={`fixed hidden sm:block z-40 select-none ${
+        className={`fixed z-[60] select-none ${
           animationPhase === 'complete' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         } ${activeCat >= 1 || animationPhase === 'complete' ? 'opacity-100' : 'opacity-0'}`}
         style={{
@@ -297,8 +341,8 @@ export default function Home() {
         <Image
           src="/cat-purple.svg"
           alt=""
-          width={140}
-          height={140}
+          width={isMobile ? 70 : 140}
+          height={isMobile ? 70 : 140}
           className="pointer-events-none"
           draggable={false}
         />
@@ -306,7 +350,7 @@ export default function Home() {
       <div
         ref={catYellowRef}
         onMouseDown={(e) => handleMouseDown(e, "yellow")}
-        className={`fixed hidden sm:block z-40 select-none ${
+        className={`fixed z-[60] select-none ${
           animationPhase === 'complete' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         } ${activeCat >= 2 || animationPhase === 'complete' ? 'opacity-100' : 'opacity-0'}`}
         style={{
@@ -317,8 +361,8 @@ export default function Home() {
         <Image
           src="/cat-yellow.svg"
           alt=""
-          width={150}
-          height={150}
+          width={isMobile ? 70 : 150}
+          height={isMobile ? 70 : 150}
           className="pointer-events-none"
           draggable={false}
         />
@@ -326,7 +370,7 @@ export default function Home() {
       <div
         ref={catGreenRef}
         onMouseDown={(e) => handleMouseDown(e, "green")}
-        className={`fixed hidden sm:block z-40 select-none ${
+        className={`fixed z-[60] select-none ${
           animationPhase === 'complete' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         } ${activeCat >= 3 || animationPhase === 'complete' ? 'opacity-100' : 'opacity-0'}`}
         style={{
@@ -337,8 +381,8 @@ export default function Home() {
         <Image
           src="/cat-green.svg"
           alt=""
-          width={145}
-          height={145}
+          width={isMobile ? 70 : 145}
+          height={isMobile ? 70 : 145}
           className="pointer-events-none"
           draggable={false}
         />
@@ -395,13 +439,13 @@ export default function Home() {
           </span>
           <div className="flex items-center justify-center gap-6">
             <a
-              href="https://github.com/crafter-station/pawboard"
+              href="https://crafter.station"
               target="_blank"
               rel="noopener noreferrer"
               onClick={playSound}
               className="text-muted-foreground/30 hover:text-foreground/50 transition-colors"
             >
-              <GithubLogo className="h-5 w-auto" />
+              <CrafterStationLogo className="h-4 w-auto" />
             </a>
             <a
               href="https://moraleja.co"
