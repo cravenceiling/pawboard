@@ -13,9 +13,9 @@ export function AddCardButton({ onClick }: AddCardButtonProps) {
       onClick={onClick}
       variant="outline"
       size="icon"
-      className="rounded-full w-12 h-12 sm:w-14 sm:h-14 bg-card/80 backdrop-blur-sm border-border"
+      className="h-8 w-8 sm:h-9 sm:w-9 bg-card/80 backdrop-blur-sm border-border"
     >
-      <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
+      <Plus className="w-4 h-4" />
     </Button>
   );
 }

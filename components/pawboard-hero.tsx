@@ -19,7 +19,7 @@ export function PawboardHero({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 685.14 280.59"
-      className={className}
+      className={`overflow-visible ${className ?? ""}`}
       aria-label="Pawboard - where ideas land on their feet"
     >
       <defs>

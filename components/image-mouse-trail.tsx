@@ -86,7 +86,7 @@ export function ImageMouseTrail({
       onTouchMove={(e) => handleOnMove(e.touches[0])}
       ref={containerRef}
       className={cn(
-        "grid place-content-center h-screen w-full relative overflow-hidden",
+        "grid place-content-center h-screen w-full relative overflow-visible",
         className
       )}
     >
