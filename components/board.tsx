@@ -4,29 +4,36 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { useRealtimeCards } from "@/hooks/use-realtime-cards";
 import { useFingerprint } from "@/hooks/use-fingerprint";
+import { useCatSound } from "@/hooks/use-cat-sound";
 import { RealtimeCursors } from "@/components/realtime-cursors";
 import { IdeaCard } from "@/components/idea-card";
 import { UserBadge } from "@/components/user-badge";
 import { AddCardButton } from "@/components/add-card-button";
+import { CommandMenu } from "@/components/command-menu";
 import { generateUsername } from "@/lib/names";
 import { generateCardId } from "@/lib/nanoid";
 import { createCard, updateCard, deleteCard, voteCard as voteCardAction } from "@/app/actions";
 import type { Card } from "@/db/schema";
-import { Share2, Home } from "lucide-react";
+import { Share2, Home, Plus, Command, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcherToggle } from "@/components/elements/theme-switcher-toggle";
 import Link from "next/link";
 
-const CARD_COLORS = [
-  "#b77ff7",
-  "#ff8f62",
-  "#8ef77e",
-  "#c0ecf0",
-  "#f7e07e",
+const LIGHT_COLORS = [
+  "#D4B8F0",
+  "#FFCAB0",
+  "#C4EDBA",
+  "#C5E8EC",
+  "#F9E9A8",
 ];
 
-const LIGHT_COLORS = CARD_COLORS;
-const DARK_COLORS = CARD_COLORS;
+const DARK_COLORS = [
+  "#9B7BC7",
+  "#E8936A",
+  "#7BC96A",
+  "#7ABCC5",
+  "#D4C468",
+];
 
 interface BoardProps {
   sessionId: string;
@@ -36,8 +43,12 @@ interface BoardProps {
 export function Board({ sessionId, initialCards }: BoardProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [sessionIdCopied, setSessionIdCopied] = useState(false);
+  const [newCardId, setNewCardId] = useState<string | null>(null);
+  const [commandOpen, setCommandOpen] = useState(false);
   const { resolvedTheme } = useTheme();
   const { visitorId, isLoading: isFingerprintLoading } = useFingerprint();
+  const playSound = useCatSound();
 
   useEffect(() => {
     setUsername(generateUsername());
@@ -60,14 +71,20 @@ export function Board({ sessionId, initialCards }: BoardProps) {
 
   const handleAddCard = async () => {
     if (!username || !visitorId) return;
+    playSound();
 
     const isMobile = window.innerWidth < 640;
     const cardWidth = isMobile ? 160 : 224;
-    const x = Math.random() * (window.innerWidth - cardWidth - 40) + 20;
-    const y = Math.random() * (window.innerHeight - 200) + (isMobile ? 80 : 100);
+    const cardHeight = isMobile ? 120 : 160;
 
+    // Center of viewport with random offset (+-100px) to avoid stacking
+    const offsetRange = 100;
+    const x = (window.innerWidth / 2) - (cardWidth / 2) + (Math.random() * offsetRange * 2 - offsetRange);
+    const y = (window.innerHeight / 2) - (cardHeight / 2) + (Math.random() * offsetRange * 2 - offsetRange);
+
+    const cardId = generateCardId();
     const newCard: Card = {
-      id: generateCardId(),
+      id: cardId,
       sessionId,
       content: "",
       color: getRandomColor(),
@@ -80,6 +97,7 @@ export function Board({ sessionId, initialCards }: BoardProps) {
       updatedAt: new Date(),
     };
 
+    setNewCardId(cardId);
     addCard(newCard);
     await createCard(newCard);
   };
@@ -125,6 +143,12 @@ export function Board({ sessionId, initialCards }: BoardProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopySessionId = async () => {
+    await navigator.clipboard.writeText(sessionId);
+    setSessionIdCopied(true);
+    setTimeout(() => setSessionIdCopied(false), 2000);
+  };
+
   if (!username || isFingerprintLoading || !visitorId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -135,6 +159,12 @@ export function Board({ sessionId, initialCards }: BoardProps) {
 
   return (
     <div className="min-h-screen overflow-hidden relative">
+      <CommandMenu 
+        open={commandOpen} 
+        onOpenChange={setCommandOpen} 
+        onAddCard={handleAddCard} 
+        onShare={handleShare} 
+      />
       <RealtimeCursors roomName={`session:${sessionId}`} username={username} />
 
       <div className="fixed top-2 sm:top-4 left-2 sm:left-4 z-50 flex items-center gap-1.5 sm:gap-3">
@@ -150,20 +180,50 @@ export function Board({ sessionId, initialCards }: BoardProps) {
         <UserBadge username={username} />
       </div>
 
-      <div className="fixed top-2 sm:top-4 right-2 sm:right-4 z-50 flex items-center gap-1 sm:gap-2">
-        <div className="hidden sm:block text-muted-foreground text-sm font-mono bg-card/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-border">
+      <div className="fixed top-2 sm:top-4 right-2 sm:right-4 z-50 flex items-center gap-1.5 sm:gap-2">
+        <button
+          onClick={handleCopySessionId}
+          className="hidden sm:flex text-muted-foreground text-sm font-mono bg-card/80 backdrop-blur-sm px-3 h-8 sm:h-9 items-center justify-center gap-2 rounded-md border border-border shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 transition-all cursor-pointer"
+          title={sessionIdCopied ? "Copied!" : "Copy session ID"}
+        >
           {sessionId}
-        </div>
+          {sessionIdCopied ? (
+            <Check className="w-3.5 h-3.5 text-sky-500" />
+          ) : (
+            <Copy className="w-3.5 h-3.5 opacity-50" />
+          )}
+        </button>
         <Button
           variant="outline"
-          size="sm"
-          onClick={handleShare}
-          className="bg-card/80 backdrop-blur-sm h-8 sm:h-9 px-2 sm:px-3"
+          size="icon"
+          onClick={handleAddCard}
+          className="bg-card/80 backdrop-blur-sm h-8 w-8 sm:h-9 sm:w-9"
         >
-          <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2" />
-          <span className="hidden sm:inline">{copied ? "Copied!" : "Share"}</span>
+          <Plus className="w-4 h-4" />
         </Button>
-        <div className="bg-card/80 backdrop-blur-sm px-1.5 sm:px-2 py-1 rounded-lg border border-border">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleShare}
+          className="bg-card/80 backdrop-blur-sm h-8 w-8 sm:h-9 sm:w-9"
+          title={copied ? "Copied!" : "Share"}
+        >
+          {copied ? (
+            <Check className="w-4 h-4 text-sky-500" />
+          ) : (
+            <Share2 className="w-4 h-4" />
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setCommandOpen(true)}
+          className="bg-card/80 backdrop-blur-sm h-8 w-8 sm:h-9 sm:w-9"
+          title="Command menu (⌘K)"
+        >
+          <Command className="w-4 h-4" />
+        </Button>
+        <div className="bg-card/80 backdrop-blur-sm h-8 sm:h-9 flex items-center px-1.5 sm:px-2 rounded-lg border border-border">
           <ThemeSwitcherToggle />
         </div>
       </div>
@@ -178,6 +238,8 @@ export function Board({ sessionId, initialCards }: BoardProps) {
             key={card.id}
             card={card}
             visitorId={visitorId}
+            autoFocus={card.id === newCardId}
+            onFocused={() => setNewCardId(null)}
             onMove={moveCard}
             onType={typeCard}
             onChangeColor={changeColor}
@@ -194,7 +256,9 @@ export function Board({ sessionId, initialCards }: BoardProps) {
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-muted-foreground">
               <p className="text-lg">No ideas yet</p>
-              <p className="text-sm mt-1">Click the + button to add one</p>
+              <p className="text-sm mt-1">
+                Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">⌘K</kbd> or click + to add one
+              </p>
             </div>
           </div>
         )}

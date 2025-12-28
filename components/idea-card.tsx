@@ -3,33 +3,57 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 import NumberFlow from "@number-flow/react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { X, GripVertical, ChevronUp, Sparkles, Loader2, Undo2, Maximize2, Minimize2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import { X, GripVertical, ChevronUp, Sparkles, Loader2, Undo2, Maximize2, Minimize2, Copy, Check } from "lucide-react";
 import Markdown from "react-markdown";
 import type { Card } from "@/db/schema";
 
-const CARD_COLORS = [
-  "#b77ff7",
-  "#ff8f62",
-  "#8ef77e",
-  "#c0ecf0",
-  "#f7e07e",
+const LIGHT_COLORS = [
+  "#D4B8F0",
+  "#FFCAB0",
+  "#C4EDBA",
+  "#C5E8EC",
+  "#F9E9A8",
 ];
 
-const LIGHT_COLORS = CARD_COLORS;
-const DARK_COLORS = CARD_COLORS;
+const DARK_COLORS = [
+  "#9B7BC7",
+  "#E8936A",
+  "#7BC96A",
+  "#7ABCC5",
+  "#D4C468",
+];
 
-const COLOR_MAP: Record<string, string> = {};
+const COLOR_MAP: Record<string, string> = {
+  "#D4B8F0": "#9B7BC7",
+  "#FFCAB0": "#E8936A",
+  "#C4EDBA": "#7BC96A",
+  "#C5E8EC": "#7ABCC5",
+  "#F9E9A8": "#D4C468",
+  "#9B7BC7": "#D4B8F0",
+  "#E8936A": "#FFCAB0",
+  "#7BC96A": "#C4EDBA",
+  "#7ABCC5": "#C5E8EC",
+  "#D4C468": "#F9E9A8",
+};
 
 interface IdeaCardProps {
   card: Card;
   visitorId: string;
+  autoFocus?: boolean;
+  onFocused?: () => void;
   onMove: (id: string, x: number, y: number) => void;
   onType: (id: string, content: string) => void;
   onChangeColor: (id: string, color: string) => void;
@@ -44,6 +68,8 @@ interface IdeaCardProps {
 export function IdeaCard({
   card,
   visitorId,
+  autoFocus,
+  onFocused,
   onMove,
   onType,
   onChangeColor,
@@ -61,10 +87,15 @@ export function IdeaCard({
   const [isRefining, setIsRefining] = useState(false);
   const [previousContent, setPreviousContent] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const { resolvedTheme } = useTheme();
   const cardRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const startPos = useRef({ x: 0, y: 0 });
+
+  const isOwnCard = card.createdById === visitorId;
+  const hasVoted = card.votedBy?.includes(visitorId) || false;
+  const canVote = !isOwnCard;
 
   useEffect(() => {
     setMounted(true);
@@ -74,12 +105,15 @@ export function IdeaCard({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (autoFocus && isOwnCard) {
+      setIsEditing(true);
+      onFocused?.();
+    }
+  }, [autoFocus, isOwnCard, onFocused]);
+
   const isDark = mounted && resolvedTheme === "dark";
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS;
-  
-  const isOwnCard = card.createdById === visitorId;
-  const hasVoted = card.votedBy?.includes(visitorId) || false;
-  const canVote = !isOwnCard;
 
   const getDisplayColor = (storedColor: string) => {
     if (!mounted) return storedColor;
@@ -219,11 +253,26 @@ export function IdeaCard({
   const canRefine = isOwnCard && card.content.trim().length > 10;
   const canUndo = isOwnCard && previousContent !== null;
 
-  const textColorClass = "text-black/80";
-  const mutedTextClass = "text-black/50";
-  const borderClass = "border-black/15";
-  const iconClass = "text-black/40";
-  const hoverBgClass = "hover:bg-black/10";
+  const handleCopy = async () => {
+    if (!card.content.trim()) return;
+    try {
+      await navigator.clipboard.writeText(card.content);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      // Clipboard API might not be available
+    }
+  };
+
+  const textColorClass = "text-stone-800";
+  const mutedTextClass = "text-stone-600";
+  const borderClass = "border-stone-900/10";
+  const iconClass = isDark ? "text-stone-300/70" : "text-stone-500";
+  const iconActiveClass = isDark ? "text-stone-100" : "text-stone-700";
+  const hoverBgClass = isDark ? "hover:bg-white/10" : "hover:bg-stone-900/8";
+  const actionsBgClass = isDark 
+    ? (isMobile ? "bg-black/10" : "bg-transparent group-hover:bg-black/10") 
+    : (isMobile ? "bg-stone-900/5" : "bg-transparent group-hover:bg-stone-900/5");
 
   return (
     <div
@@ -243,98 +292,127 @@ export function IdeaCard({
         className="rounded-lg shadow-lg transition-shadow hover:shadow-xl"
         style={{ backgroundColor: displayColor }}
       >
-        <div className={`flex items-center justify-between p-1.5 sm:p-2 border-b ${borderClass}`}>
-          <GripVertical className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`} />
-          <div
-            className="flex items-center gap-0.5 sm:gap-1"
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            {isOwnCard && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-black/20 ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity cursor-pointer`}
-                    style={{ backgroundColor: displayColor }}
-                  />
-                </PopoverTrigger>
-                <PopoverContent 
-                  className="w-auto p-2 z-[1001]" 
-                  align="end" 
-                  sideOffset={5}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <div className="flex gap-1.5 sm:gap-2">
-                    {colors.map((color, index) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 hover:scale-110 transition-all cursor-pointer"
-                        style={{
-                          backgroundColor: color,
-                          borderColor: displayColor === color ? "rgba(0,0,0,0.5)" : "transparent",
-                        }}
-                        onClick={() => handleColorChange(color)}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-            {canUndo && (
-              <motion.button
-                type="button"
-                onClick={handleUndo}
-                whileTap={{ scale: 0.9 }}
-                className={`p-0.5 sm:p-1 rounded ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer`}
-                title="Undo AI changes"
-              >
-                <Undo2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black/50" />
-              </motion.button>
-            )}
-            {canRefine && (
-              <motion.button
-                type="button"
-                onClick={handleRefine}
-                disabled={isRefining}
-                whileTap={{ scale: 0.9 }}
-                className={`p-0.5 sm:p-1 rounded ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer disabled:cursor-wait`}
-                title="Refine with AI"
-              >
-                {isRefining ? (
-                  <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black/50 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black/50" />
-                )}
-              </motion.button>
-            )}
-            <motion.button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              whileTap={{ scale: 0.9 }}
-              className={`p-0.5 sm:p-1 rounded ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer`}
-              title={isExpanded ? "Collapse" : "Expand"}
+        <div className={`flex items-center justify-between px-2.5 py-1.5 sm:px-3 sm:py-2 border-b ${borderClass}`}>
+          <GripVertical className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass} ${isDark ? "opacity-50" : "opacity-40"}`} />
+          <TooltipProvider delayDuration={400}>
+            <div
+              className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 rounded-md ${actionsBgClass} transition-all duration-200`}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
             >
-              {isExpanded ? (
-                <Minimize2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black/50" />
-              ) : (
-                <Maximize2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black/50" />
+              {isOwnCard && (
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 ${isDark ? "border-white/30" : "border-black/20"} ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-all cursor-pointer hover:scale-110 hover:border-black/40`}
+                          style={{ backgroundColor: displayColor }}
+                        />
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Color</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent 
+                    className="w-auto p-2 z-[1001]" 
+                    align="end" 
+                    sideOffset={5}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex gap-1.5 sm:gap-2">
+                      {colors.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 hover:scale-110 transition-all cursor-pointer"
+                          style={{
+                            backgroundColor: color,
+                            borderColor: displayColor === color ? "rgba(0,0,0,0.5)" : "transparent",
+                          }}
+                          onClick={() => handleColorChange(color)}
+                        />
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
-            </motion.button>
-            {isOwnCard && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className={`p-0.5 sm:p-1 rounded ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer`}
-              >
-                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black/50" />
-              </button>
-            )}
-          </div>
+              {canUndo && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.button
+                      type="button"
+                      onClick={handleUndo}
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }}
+                      className={`p-1 sm:p-1.5 rounded-md ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer`}
+                    >
+                      <Undo2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass} group-hover:${iconActiveClass}`} />
+                    </motion.button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Undo</TooltipContent>
+                </Tooltip>
+              )}
+              {canRefine && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.button
+                      type="button"
+                      onClick={handleRefine}
+                      disabled={isRefining}
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }}
+                      className={`p-1 sm:p-1.5 rounded-md ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer disabled:cursor-wait`}
+                    >
+                      {isRefining ? (
+                        <Loader2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass} animate-spin`} />
+                      ) : (
+                        <Sparkles className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`} />
+                      )}
+                    </motion.button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Refine with AI</TooltipContent>
+                </Tooltip>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    type="button"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    whileTap={{ scale: 0.9 }}
+                    whileHover={{ scale: 1.1 }}
+                    className={`p-1 sm:p-1.5 rounded-md ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer`}
+                  >
+                    {isExpanded ? (
+                      <Minimize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`} />
+                    ) : (
+                      <Maximize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`} />
+                    )}
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{isExpanded ? "Collapse" : "Expand"}</TooltipContent>
+              </Tooltip>
+              {isOwnCard && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.button
+                      type="button"
+                      onClick={handleDelete}
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }}
+                      className={`p-1 sm:p-1.5 rounded-md ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"} ${hoverBgClass} transition-all cursor-pointer`}
+                    >
+                      <X className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`} />
+                    </motion.button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Delete</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </TooltipProvider>
         </div>
         <div 
-          className="p-2 sm:p-3" 
+          className="p-2.5 sm:p-3.5 relative" 
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
         >
@@ -344,27 +422,27 @@ export function IdeaCard({
               value={card.content}
               onChange={handleContentChange}
               onBlur={handleContentBlur}
-              className={`resize-none bg-transparent border-none p-0 ${isExpanded ? "text-sm sm:text-base" : "text-xs sm:text-sm"} ${textColorClass} focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:${mutedTextClass} overflow-y-auto transition-all duration-200 ${isExpanded ? "min-h-[120px] sm:min-h-[200px] max-h-[300px] sm:max-h-[400px]" : "min-h-[60px] sm:min-h-[80px] max-h-[120px] sm:max-h-[160px]"}`}
+              className={`resize-none bg-transparent border-none p-0 leading-relaxed ${isExpanded ? "text-[13px] sm:text-[15px]" : "text-[11px] sm:text-[13px]"} ${textColorClass} focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:${mutedTextClass} overflow-y-auto transition-all duration-200 ${isExpanded ? "min-h-[120px] sm:min-h-[200px] max-h-[300px] sm:max-h-[400px]" : "min-h-[60px] sm:min-h-[80px] max-h-[120px] sm:max-h-[160px]"}`}
               placeholder="Type your idea..."
             />
           ) : (
             <div
               onClick={() => isOwnCard && setIsEditing(true)}
-              className={`overflow-y-auto ${isExpanded ? "text-sm sm:text-base" : "text-xs sm:text-sm"} ${textColorClass} ${isOwnCard ? "cursor-text" : "cursor-default"} transition-all duration-200 ${isExpanded ? "min-h-[120px] sm:min-h-[200px] max-h-[300px] sm:max-h-[400px]" : "min-h-[60px] sm:min-h-[80px] max-h-[120px] sm:max-h-[160px]"}`}
+              className={`overflow-y-auto leading-relaxed ${isExpanded ? "text-[13px] sm:text-[15px]" : "text-[11px] sm:text-[13px]"} ${textColorClass} ${isOwnCard ? "cursor-text" : "cursor-default"} transition-all duration-200 ${isExpanded ? "min-h-[120px] sm:min-h-[200px] max-h-[300px] sm:max-h-[400px]" : "min-h-[60px] sm:min-h-[80px] max-h-[120px] sm:max-h-[160px]"}`}
             >
               {card.content ? (
                 <Markdown
                   components={{
-                    p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
-                    ul: ({ children }) => <ul className="list-disc list-inside mb-1.5 last:mb-0 space-y-0.5">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-inside mb-1.5 last:mb-0 space-y-0.5">{children}</ol>,
-                    li: ({ children }) => <li>{children}</li>,
-                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                    em: ({ children }) => <em className="italic">{children}</em>,
-                    code: ({ children }) => <code className="px-1 py-0.5 rounded text-[10px] sm:text-xs bg-black/10">{children}</code>,
-                    h1: ({ children }) => <h1 className="font-bold text-sm sm:text-base mb-1">{children}</h1>,
-                    h2: ({ children }) => <h2 className="font-bold text-xs sm:text-sm mb-1">{children}</h2>,
-                    h3: ({ children }) => <h3 className="font-semibold text-xs sm:text-sm mb-0.5">{children}</h3>,
+                    p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                    ul: ({ children }) => <ul className="list-disc list-inside mb-2 last:mb-0 space-y-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside mb-2 last:mb-0 space-y-1">{children}</ol>,
+                    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold text-stone-900">{children}</strong>,
+                    em: ({ children }) => <em className="italic text-stone-700">{children}</em>,
+                    code: ({ children }) => <code className="px-1.5 py-0.5 rounded text-[10px] sm:text-xs bg-stone-900/8 text-stone-700 font-mono">{children}</code>,
+                    h1: ({ children }) => <h1 className="font-bold text-sm sm:text-base mb-1.5 text-stone-900">{children}</h1>,
+                    h2: ({ children }) => <h2 className="font-bold text-[13px] sm:text-sm mb-1.5 text-stone-900">{children}</h2>,
+                    h3: ({ children }) => <h3 className="font-semibold text-xs sm:text-[13px] mb-1 text-stone-800">{children}</h3>,
                   }}
                 >
                   {card.content}
@@ -376,36 +454,85 @@ export function IdeaCard({
               )}
             </div>
           )}
+          {card.content && !isEditing && (
+            <TooltipProvider delayDuration={400}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    type="button"
+                    onClick={handleCopy}
+                    initial={{ opacity: 0 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`absolute bottom-2 right-2 p-1.5 rounded-md ${isMobile ? "opacity-70" : "opacity-0 group-hover:opacity-70"} hover:opacity-100 ${hoverBgClass} transition-all cursor-pointer`}
+                  >
+                    <AnimatePresence mode="wait">
+                      {isCopied ? (
+                        <motion.div
+                          key="check"
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.5, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-500" />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="copy"
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.5, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <Copy className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${iconClass}`} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent side="left">{isCopied ? "Copied!" : "Copy"}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
-        <div className={`flex items-center justify-between px-2 sm:px-3 pb-1.5 sm:pb-2 border-t ${borderClass} pt-1.5 sm:pt-2`}>
-          <span className={`text-[10px] sm:text-xs ${mutedTextClass} truncate max-w-[70px] sm:max-w-[100px]`}>
+        <div className={`flex items-center justify-between px-2.5 sm:px-3.5 py-2 sm:py-2.5 border-t ${borderClass}`}>
+          <span className={`text-[10px] sm:text-[11px] ${mutedTextClass} truncate max-w-[70px] sm:max-w-[100px] font-medium`}>
             {card.createdBy}
           </span>
-          <div
-            className="flex items-center gap-1 sm:gap-1.5"
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <span className={`text-[10px] sm:text-xs font-medium tabular-nums ${mutedTextClass}`}>
-              <NumberFlow value={card.votes} format={{ notation: "compact" }} />
-            </span>
-            <motion.button
-              type="button"
-              whileTap={canVote ? { scale: 0.85 } : undefined}
-              onClick={handleVote}
-              disabled={!canVote}
-              className={`p-0.5 sm:p-1 rounded-full transition-all ${
-                !canVote
-                  ? "opacity-30 cursor-not-allowed"
-                  : hasVoted
-                    ? "bg-black/20 text-black"
-                    : `${hoverBgClass} cursor-pointer`
-              }`}
-              title={isOwnCard ? "Can't vote on your own card" : hasVoted ? "Remove vote" : "Vote"}
+          <TooltipProvider delayDuration={400}>
+            <div
+              className="flex items-center gap-1 sm:gap-1.5"
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
             >
-              <ChevronUp className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${hasVoted ? "" : iconClass}`} />
-            </motion.button>
-          </div>
+              <span className={`text-[10px] sm:text-[11px] font-semibold tabular-nums ${mutedTextClass}`}>
+                <NumberFlow value={card.votes} format={{ notation: "compact" }} />
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    type="button"
+                    whileTap={canVote ? { scale: 0.85 } : undefined}
+                    onClick={handleVote}
+                    disabled={!canVote}
+                    className={`p-0.5 sm:p-1 rounded-full transition-all ${
+                      !canVote
+                        ? "opacity-30 cursor-not-allowed"
+                        : hasVoted
+                          ? "bg-stone-900/15 text-stone-800"
+                          : `${hoverBgClass} cursor-pointer`
+                    }`}
+                  >
+                    <ChevronUp className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${hasVoted ? "text-stone-800" : iconClass}`} />
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {isOwnCard ? "Can't vote on your own" : hasVoted ? "Remove vote" : "Vote"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
       </div>
     </div>
