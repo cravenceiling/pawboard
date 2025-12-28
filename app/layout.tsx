@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: "Pawboard",
     images: [
       {
-        url: `${siteUrl}/Pawboard_OG.jpg`,
+        url: `${siteUrl}/pawboard_og.png`,
         width: 1200,
         height: 630,
         alt: "Pawboard",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Pawboard",
     description: "Where ideas land on their feet",
-    images: [`${siteUrl}/Pawboard_OG.jpg`],
+    images: [`${siteUrl}/pawboard_og.png`],
   },
 };
 
