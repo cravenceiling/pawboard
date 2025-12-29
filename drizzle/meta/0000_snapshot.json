@@ -1,5 +1,5 @@
 {
-  "id": "6a4aebea-31bd-46a7-9f32-f337c90072e4",
+  "id": "f52c06e8-42fd-44a6-9a84-788084739ae4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -47,6 +47,26 @@
           "primaryKey": false,
           "notNull": true,
           "default": 100
+        },
+        "votes": {
+          "name": "votes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "voted_by": {
+          "name": "voted_by",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "created_by_id": {
+          "name": "created_by_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
         "created_by": {
           "name": "created_by",

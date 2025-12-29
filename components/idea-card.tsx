@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
+import Image from "next/image";
 import NumberFlow from "@number-flow/react";
 import { motion, AnimatePresence } from "motion/react";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { X, GripVertical, ChevronUp, Sparkles, Loader2, Undo2, Maximize2, Minimize2, Copy, Check } from "lucide-react";
 import Markdown from "react-markdown";
+import { getAvatarForUser } from "@/lib/utils";
 import type { Card } from "@/db/schema";
 
 const LIGHT_COLORS = [
@@ -514,9 +516,18 @@ export function IdeaCard({
           )}
         </div>
         <div className={`flex items-center justify-between px-2.5 sm:px-3.5 py-2 sm:py-2.5 border-t ${borderClass}`}>
-          <span className={`text-[10px] sm:text-[11px] ${mutedTextClass} truncate max-w-[70px] sm:max-w-[100px] font-medium`}>
-            {card.createdBy}
-          </span>
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <Image
+              src={getAvatarForUser(card.createdBy)}
+              alt={`${card.createdBy}'s avatar`}
+              width={16}
+              height={16}
+              className="w-4 h-4 sm:w-5 sm:h-5"
+            />
+            <span className={`text-[10px] sm:text-[11px] ${mutedTextClass} truncate max-w-[55px] sm:max-w-[80px] font-medium`}>
+              {card.createdBy}
+            </span>
+          </div>
           <TooltipProvider delayDuration={400}>
             <div
               className="flex items-center gap-1 sm:gap-1.5"

@@ -13,6 +13,7 @@ import { AddCardButton } from "@/components/add-card-button";
 import { CommandMenu } from "@/components/command-menu";
 import { generateUsername } from "@/lib/names";
 import { generateCardId } from "@/lib/nanoid";
+import { getAvatarForUser } from "@/lib/utils";
 import { createCard, updateCard, deleteCard, voteCard as voteCardAction } from "@/app/actions";
 import type { Card } from "@/db/schema";
 import { Share2, Home, Plus, Command, Copy, Check, Minus, Maximize2 } from "lucide-react";
@@ -274,7 +275,7 @@ export function Board({ sessionId, initialCards }: BoardProps) {
             <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>
         </Link>
-        <UserBadge username={username} />
+        <UserBadge username={username} avatar={getAvatarForUser(visitorId)} />
       </div>
 
       {/* Fixed UI - Top Right */}
