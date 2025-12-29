@@ -2,6 +2,11 @@ import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+interface Point {
+  x: number
+  y: number
+}
+
 /**
  * Throttle a callback to a certain delay, It will only call the callback if the delay has passed, with the arguments
  * from the last call
@@ -71,10 +76,12 @@ export const useRealtimeCursors = ({
   roomName,
   username,
   throttleMs,
+  screenToWorld,
 }: {
   roomName: string
   username: string
   throttleMs: number
+  screenToWorld: (screen: Point) => Point
 }) => {
   const [variant] = useState(getRandomVariant)
   const [userId] = useState(generateRandomNumber)
@@ -87,10 +94,13 @@ export const useRealtimeCursors = ({
     (event: MouseEvent) => {
       const { clientX, clientY } = event
 
+      // Convert screen coordinates to world coordinates
+      const worldPos = screenToWorld({ x: clientX, y: clientY })
+
       const payload: CursorEventPayload = {
         position: {
-          x: clientX,
-          y: clientY,
+          x: worldPos.x,
+          y: worldPos.y,
         },
         user: {
           id: userId,
@@ -109,7 +119,7 @@ export const useRealtimeCursors = ({
         payload: payload,
       })
     },
-    [variant, userId, username]
+    [variant, userId, username, screenToWorld]
   )
 
   const handleMouseMove = useThrottleCallback(callback, throttleMs)
@@ -170,7 +180,7 @@ export const useRealtimeCursors = ({
       channel.unsubscribe()
       channelRef.current = null
     }
-  }, [])
+  }, [roomName, userId])
 
   useEffect(() => {
     // Add event listener for mousemove

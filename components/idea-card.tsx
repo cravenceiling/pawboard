@@ -49,6 +49,11 @@ const COLOR_MAP: Record<string, string> = {
   "#D4C468": "#F9E9A8",
 };
 
+interface Point {
+  x: number;
+  y: number;
+}
+
 interface IdeaCardProps {
   card: Card;
   visitorId: string;
@@ -63,6 +68,8 @@ interface IdeaCardProps {
   onPersistMove: (id: string, x: number, y: number) => void;
   onPersistColor: (id: string, color: string) => void;
   onPersistDelete: (id: string) => void;
+  screenToWorld: (screen: Point) => Point;
+  zoom: number;
 }
 
 export function IdeaCard({
@@ -79,7 +86,10 @@ export function IdeaCard({
   onPersistMove,
   onPersistColor,
   onPersistDelete,
+  screenToWorld,
+  zoom: _zoom,
 }: IdeaCardProps) {
+  void _zoom; // Reserved for future use (cursor scaling, etc.)
   const [isDragging, setIsDragging] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -133,20 +143,23 @@ export function IdeaCard({
     if (!isOwnCard) return;
     setIsDragging(true);
     startPos.current = { x: card.x, y: card.y };
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (rect) {
-      dragOffset.current = {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-    }
+    // Calculate the offset in world coordinates
+    // The click position in world space minus the card's world position
+    const clickWorld = screenToWorld({ x: clientX, y: clientY });
+    dragOffset.current = {
+      x: clickWorld.x - card.x,
+      y: clickWorld.y - card.y,
+    };
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Don't start drag on middle mouse button (used for panning)
+    if (e.button === 1) return;
     handleDragStart(e.clientX, e.clientY);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Only handle single-finger touch (two-finger is for panning/zooming)
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       handleDragStart(touch.clientX, touch.clientY);
@@ -157,16 +170,20 @@ export function IdeaCard({
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const x = e.clientX - dragOffset.current.x;
-      const y = e.clientY - dragOffset.current.y;
+      // Convert screen position to world position and apply offset
+      const worldPos = screenToWorld({ x: e.clientX, y: e.clientY });
+      const x = worldPos.x - dragOffset.current.x;
+      const y = worldPos.y - dragOffset.current.y;
       onMove(card.id, x, y);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 1) {
         const touch = e.touches[0];
-        const x = touch.clientX - dragOffset.current.x;
-        const y = touch.clientY - dragOffset.current.y;
+        // Convert screen position to world position and apply offset
+        const worldPos = screenToWorld({ x: touch.clientX, y: touch.clientY });
+        const x = worldPos.x - dragOffset.current.x;
+        const y = worldPos.y - dragOffset.current.y;
         onMove(card.id, x, y);
       }
     };
@@ -189,7 +206,7 @@ export function IdeaCard({
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleEnd);
     };
-  }, [isDragging, card.id, card.x, card.y, onMove, onPersistMove]);
+  }, [isDragging, card.id, card.x, card.y, onMove, onPersistMove, screenToWorld]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onType(card.id, e.target.value);

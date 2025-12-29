@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTheme } from "next-themes";
 import { useRealtimeCards } from "@/hooks/use-realtime-cards";
 import { useFingerprint } from "@/hooks/use-fingerprint";
 import { useCatSound } from "@/hooks/use-cat-sound";
+import { useCanvasGestures } from "@/hooks/use-canvas-gestures";
 import { RealtimeCursors } from "@/components/realtime-cursors";
 import { IdeaCard } from "@/components/idea-card";
 import { UserBadge } from "@/components/user-badge";
@@ -14,7 +15,7 @@ import { generateUsername } from "@/lib/names";
 import { generateCardId } from "@/lib/nanoid";
 import { createCard, updateCard, deleteCard, voteCard as voteCardAction } from "@/app/actions";
 import type { Card } from "@/db/schema";
-import { Share2, Home, Plus, Command, Copy, Check } from "lucide-react";
+import { Share2, Home, Plus, Command, Copy, Check, Minus, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcherToggle } from "@/components/elements/theme-switcher-toggle";
 import Link from "next/link";
@@ -40,15 +41,34 @@ interface BoardProps {
   initialCards: Card[];
 }
 
+// Card dimensions for calculations
+const CARD_WIDTH = 224;
+const CARD_HEIGHT = 160;
+const CARD_WIDTH_MOBILE = 160;
+const CARD_HEIGHT_MOBILE = 120;
+
 export function Board({ sessionId, initialCards }: BoardProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sessionIdCopied, setSessionIdCopied] = useState(false);
   const [newCardId, setNewCardId] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
+  const hasInitializedViewRef = useRef(false);
   const { resolvedTheme } = useTheme();
   const { visitorId, isLoading: isFingerprintLoading } = useFingerprint();
   const playSound = useCatSound();
+
+  const {
+    pan,
+    zoom,
+    isPanning,
+    screenToWorld,
+    zoomTo,
+    resetView,
+    fitToBounds,
+    centerOn,
+    handlers: canvasHandlers,
+  } = useCanvasGestures();
 
   useEffect(() => {
     setUsername(generateUsername());
@@ -64,6 +84,76 @@ export function Board({ sessionId, initialCards }: BoardProps) {
     voteCard,
   } = useRealtimeCards(sessionId, initialCards, visitorId || "");
 
+  // Fit all cards in view
+  const fitAllCards = useCallback(() => {
+    if (cards.length === 0) {
+      resetView();
+      return;
+    }
+
+    const isMobile = window.innerWidth < 640;
+    const cardWidth = isMobile ? CARD_WIDTH_MOBILE : CARD_WIDTH;
+    const cardHeight = isMobile ? CARD_HEIGHT_MOBILE : CARD_HEIGHT;
+
+    const bounds = cards.reduce(
+      (acc, card) => ({
+        minX: Math.min(acc.minX, card.x),
+        minY: Math.min(acc.minY, card.y),
+        maxX: Math.max(acc.maxX, card.x + cardWidth),
+        maxY: Math.max(acc.maxY, card.y + cardHeight),
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    );
+
+    fitToBounds(bounds);
+  }, [cards, fitToBounds, resetView]);
+
+  // Initialize view centered on cards on first load
+  useEffect(() => {
+    if (hasInitializedViewRef.current) return;
+    hasInitializedViewRef.current = true;
+    
+    if (initialCards.length === 0) {
+      return;
+    }
+
+    const isMobile = window.innerWidth < 640;
+    const cardWidth = isMobile ? CARD_WIDTH_MOBILE : CARD_WIDTH;
+    const cardHeight = isMobile ? CARD_HEIGHT_MOBILE : CARD_HEIGHT;
+
+    const bounds = initialCards.reduce(
+      (acc, card) => ({
+        minX: Math.min(acc.minX, card.x),
+        minY: Math.min(acc.minY, card.y),
+        maxX: Math.max(acc.maxX, card.x + cardWidth),
+        maxY: Math.max(acc.maxY, card.y + cardHeight),
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    );
+
+    // Center on cards at 100% zoom
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    centerOn({ x: centerX, y: centerY }, 1);
+  }, [initialCards, centerOn]);
+
+  // Keyboard shortcut for fit all (key "1")
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.key === "1" && !e.metaKey && !e.ctrlKey) {
+        fitAllCards();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fitAllCards]);
+
   const getRandomColor = () => {
     const colors = resolvedTheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
     return colors[Math.floor(Math.random() * colors.length)];
@@ -74,13 +164,20 @@ export function Board({ sessionId, initialCards }: BoardProps) {
     playSound();
 
     const isMobile = window.innerWidth < 640;
-    const cardWidth = isMobile ? 160 : 224;
-    const cardHeight = isMobile ? 120 : 160;
+    const cardWidth = isMobile ? CARD_WIDTH_MOBILE : CARD_WIDTH;
+    const cardHeight = isMobile ? CARD_HEIGHT_MOBILE : CARD_HEIGHT;
 
-    // Center of viewport with random offset (+-100px) to avoid stacking
+    // Convert screen center to world coordinates
+    const screenCenter = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    };
+    const worldCenter = screenToWorld(screenCenter);
+
+    // Random offset (+-100px) to avoid stacking
     const offsetRange = 100;
-    const x = (window.innerWidth / 2) - (cardWidth / 2) + (Math.random() * offsetRange * 2 - offsetRange);
-    const y = (window.innerHeight / 2) - (cardHeight / 2) + (Math.random() * offsetRange * 2 - offsetRange);
+    const x = worldCenter.x - (cardWidth / 2) + (Math.random() * offsetRange * 2 - offsetRange);
+    const y = worldCenter.y - (cardHeight / 2) + (Math.random() * offsetRange * 2 - offsetRange);
 
     const cardId = generateCardId();
     const newCard: Card = {
@@ -165,8 +262,8 @@ export function Board({ sessionId, initialCards }: BoardProps) {
         onAddCard={handleAddCard} 
         onShare={handleShare} 
       />
-      <RealtimeCursors roomName={`session:${sessionId}`} username={username} />
 
+      {/* Fixed UI - Top Left */}
       <div className="fixed top-2 sm:top-4 left-2 sm:left-4 z-50 flex items-center gap-1.5 sm:gap-3">
         <Link href="/">
           <Button
@@ -180,8 +277,10 @@ export function Board({ sessionId, initialCards }: BoardProps) {
         <UserBadge username={username} />
       </div>
 
+      {/* Fixed UI - Top Right */}
       <div className="fixed top-2 sm:top-4 right-2 sm:right-4 z-50 flex items-center gap-1.5 sm:gap-2">
         <button
+          type="button"
           onClick={handleCopySessionId}
           className="hidden sm:flex text-muted-foreground text-sm font-mono bg-card/80 backdrop-blur-sm px-3 h-8 sm:h-9 items-center justify-center gap-2 rounded-md border border-border shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 transition-all cursor-pointer"
           title={sessionIdCopied ? "Copied!" : "Copy session ID"}
@@ -228,30 +327,96 @@ export function Board({ sessionId, initialCards }: BoardProps) {
         </div>
       </div>
 
+      {/* Fixed UI - Bottom Right */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
         <AddCardButton onClick={handleAddCard} />
       </div>
 
-      <div className="relative w-full h-screen">
-        {cards.map((card) => (
-          <IdeaCard
-            key={card.id}
-            card={card}
-            visitorId={visitorId}
-            autoFocus={card.id === newCardId}
-            onFocused={() => setNewCardId(null)}
-            onMove={moveCard}
-            onType={typeCard}
-            onChangeColor={changeColor}
-            onDelete={removeCard}
-            onVote={handleVote}
-            onPersistContent={handlePersistContent}
-            onPersistMove={handlePersistMove}
-            onPersistColor={handlePersistColor}
-            onPersistDelete={handlePersistDelete}
-          />
-        ))}
+      {/* Fixed UI - Bottom Left: Zoom Controls */}
+      <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-50 flex items-center gap-1 bg-card/80 backdrop-blur-sm rounded-lg border border-border px-1 py-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => zoomTo(zoom / 1.2)}
+          className="h-7 w-7 sm:h-8 sm:w-8"
+          title="Zoom out (⌘-)"
+        >
+          <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+        <span className="text-xs sm:text-sm font-mono w-10 sm:w-12 text-center text-muted-foreground">
+          {Math.round(zoom * 100)}%
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => zoomTo(zoom * 1.2)}
+          className="h-7 w-7 sm:h-8 sm:w-8"
+          title="Zoom in (⌘+)"
+        >
+          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+        <div className="w-px h-5 bg-border mx-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={fitAllCards}
+          className="h-7 w-7 sm:h-8 sm:w-8"
+          title="Fit all cards (1)"
+        >
+          <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+      </div>
 
+      {/* Viewport with gesture handlers */}
+      <div 
+        role="application"
+        aria-label="Idea board canvas - use mouse wheel to pan, Ctrl+scroll to zoom"
+        className="relative w-full h-screen overflow-hidden"
+        style={{ cursor: isPanning ? "grabbing" : "default" }}
+        onMouseDown={canvasHandlers.onMouseDown}
+        onWheel={canvasHandlers.onWheel}
+        onTouchStart={canvasHandlers.onTouchStart}
+        onTouchMove={canvasHandlers.onTouchMove}
+        onTouchEnd={canvasHandlers.onTouchEnd}
+      >
+        {/* Transformable canvas */}
+        <div
+          className="absolute origin-top-left"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          }}
+        >
+          {/* Cards */}
+          {cards.map((card) => (
+            <IdeaCard
+              key={card.id}
+              card={card}
+              visitorId={visitorId}
+              autoFocus={card.id === newCardId}
+              onFocused={() => setNewCardId(null)}
+              onMove={moveCard}
+              onType={typeCard}
+              onChangeColor={changeColor}
+              onDelete={removeCard}
+              onVote={handleVote}
+              onPersistContent={handlePersistContent}
+              onPersistMove={handlePersistMove}
+              onPersistColor={handlePersistColor}
+              onPersistDelete={handlePersistDelete}
+              screenToWorld={screenToWorld}
+              zoom={zoom}
+            />
+          ))}
+
+          {/* Cursors - rendered in world space */}
+          <RealtimeCursors 
+            roomName={`session:${sessionId}`} 
+            username={username}
+            screenToWorld={screenToWorld}
+          />
+        </div>
+
+        {/* Empty state - stays centered in viewport */}
         {cards.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-muted-foreground">

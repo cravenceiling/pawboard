@@ -3,22 +3,32 @@
 import { Cursor } from '@/components/cursor'
 import { useRealtimeCursors } from '@/hooks/use-realtime-cursors'
 
+interface Point {
+  x: number
+  y: number
+}
+
 const THROTTLE_MS = 50
 
-export const RealtimeCursors = ({ roomName, username }: { roomName: string; username: string }) => {
-  const { cursors } = useRealtimeCursors({ roomName, username, throttleMs: THROTTLE_MS })
+interface RealtimeCursorsProps {
+  roomName: string
+  username: string
+  screenToWorld: (screen: Point) => Point
+}
+
+export const RealtimeCursors = ({ roomName, username, screenToWorld }: RealtimeCursorsProps) => {
+  const { cursors } = useRealtimeCursors({ roomName, username, throttleMs: THROTTLE_MS, screenToWorld })
 
   return (
-    <div>
+    <div className="pointer-events-none">
       {Object.keys(cursors).map((id) => (
         <Cursor
           key={id}
-          className="fixed transition-transform ease-in-out z-50"
+          className="absolute transition-all ease-out"
           style={{
-            transitionDuration: '20ms',
-            top: 0,
-            left: 0,
-            transform: `translate(${cursors[id].position.x}px, ${cursors[id].position.y}px)`,
+            transitionDuration: '50ms',
+            left: cursors[id].position.x,
+            top: cursors[id].position.y,
           }}
           color={cursors[id].color}
           cursorImage={cursors[id].cursorImage}
