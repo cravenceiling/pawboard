@@ -61,6 +61,7 @@ export function Board({ sessionId, initialCards, initialParticipants }: BoardPro
   const [sessionIdCopied, setSessionIdCopied] = useState(false);
   const [newCardId, setNewCardId] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [editNameOpen, setEditNameOpen] = useState(false);
   const [participants, setParticipants] = useState<Map<string, string>>(
     () => new Map(initialParticipants.map(p => [p.visitorId, p.username]))
   );
@@ -312,7 +313,16 @@ export function Board({ sessionId, initialCards, initialParticipants }: BoardPro
         open={commandOpen} 
         onOpenChange={setCommandOpen} 
         onAddCard={handleAddCard} 
-        onShare={handleShare} 
+        onShare={handleShare}
+        onChangeName={() => setEditNameOpen(true)}
+      />
+
+      {/* Edit Name Dialog - controlled by command menu */}
+      <EditNameDialog
+        currentName={username}
+        onSave={handleUpdateUsername}
+        open={editNameOpen}
+        onOpenChange={setEditNameOpen}
       />
 
       {/* Fixed UI - Top Left */}

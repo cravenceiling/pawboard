@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Plus, Share2, Home, Moon, Sun } from "lucide-react";
+import { Plus, Share2, Home, Moon, Sun, Pencil } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import {
@@ -19,9 +19,10 @@ interface CommandMenuProps {
   onOpenChange: (open: boolean) => void;
   onAddCard: () => void;
   onShare: () => void;
+  onChangeName: () => void;
 }
 
-export function CommandMenu({ open, onOpenChange, onAddCard, onShare }: CommandMenuProps) {
+export function CommandMenu({ open, onOpenChange, onAddCard, onShare, onChangeName }: CommandMenuProps) {
   const { setTheme } = useTheme();
   const router = useRouter();
 
@@ -59,6 +60,10 @@ export function CommandMenu({ open, onOpenChange, onAddCard, onShare }: CommandM
           <CommandItem onSelect={() => runCommand(() => router.push("/"))}>
             <Home className="mr-2 h-4 w-4" />
             Go home
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(onChangeName)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Change name
           </CommandItem>
         </CommandGroup>
         <CommandGroup heading="Theme">

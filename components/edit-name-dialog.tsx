@@ -20,18 +20,27 @@ const USERNAME_MAX_LENGTH = 30;
 interface EditNameDialogProps {
 	currentName: string;
 	onSave: (newName: string) => Promise<{ success: boolean; error?: string }>;
-	trigger: React.ReactNode;
+	trigger?: React.ReactNode;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 export function EditNameDialog({
 	currentName,
 	onSave,
 	trigger,
+	open: controlledOpen,
+	onOpenChange: controlledOnOpenChange,
 }: EditNameDialogProps) {
-	const [open, setOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
 	const [name, setName] = useState(currentName);
 	const [error, setError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+
+	// Support both controlled and uncontrolled modes
+	const isControlled = controlledOpen !== undefined;
+	const open = isControlled ? controlledOpen : internalOpen;
+	const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen;
 
 	const handleOpenChange = (newOpen: boolean) => {
 		setOpen(newOpen);
@@ -83,7 +92,7 @@ export function EditNameDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogTrigger asChild>{trigger}</DialogTrigger>
+			{trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
