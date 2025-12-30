@@ -6,12 +6,14 @@ import { useRealtimeCards } from "@/hooks/use-realtime-cards";
 import { useFingerprint } from "@/hooks/use-fingerprint";
 import { useCatSound } from "@/hooks/use-cat-sound";
 import { useCanvasGestures } from "@/hooks/use-canvas-gestures";
+import { useSessionUsername } from "@/hooks/use-session-username";
 import { RealtimeCursors } from "@/components/realtime-cursors";
 import { IdeaCard } from "@/components/idea-card";
 import { UserBadge } from "@/components/user-badge";
+import { EditNameDialog } from "@/components/edit-name-dialog";
 import { AddCardButton } from "@/components/add-card-button";
 import { CommandMenu } from "@/components/command-menu";
-import { generateUsername } from "@/lib/names";
+import { ParticipantsDialog } from "@/components/participants-dialog";
 import { generateCardId } from "@/lib/nanoid";
 import { getAvatarForUser } from "@/lib/utils";
 import { createCard, updateCard, deleteCard, voteCard as voteCardAction } from "@/app/actions";
@@ -37,9 +39,15 @@ const DARK_COLORS = [
   "#D4C468",
 ];
 
+export interface Participant {
+  visitorId: string;
+  username: string;
+}
+
 interface BoardProps {
   sessionId: string;
   initialCards: Card[];
+  initialParticipants: Participant[];
 }
 
 // Card dimensions for calculations
@@ -48,16 +56,43 @@ const CARD_HEIGHT = 160;
 const CARD_WIDTH_MOBILE = 160;
 const CARD_HEIGHT_MOBILE = 120;
 
-export function Board({ sessionId, initialCards }: BoardProps) {
-  const [username, setUsername] = useState<string | null>(null);
+export function Board({ sessionId, initialCards, initialParticipants }: BoardProps) {
   const [copied, setCopied] = useState(false);
   const [sessionIdCopied, setSessionIdCopied] = useState(false);
   const [newCardId, setNewCardId] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [participants, setParticipants] = useState<Map<string, string>>(
+    () => new Map(initialParticipants.map(p => [p.visitorId, p.username]))
+  );
   const hasInitializedViewRef = useRef(false);
   const { resolvedTheme } = useTheme();
   const { visitorId, isLoading: isFingerprintLoading } = useFingerprint();
   const playSound = useCatSound();
+  
+  const { 
+    username, 
+    isLoading: isUsernameLoading, 
+    updateUsername 
+  } = useSessionUsername({
+    sessionId,
+    visitorId,
+  });
+
+  // Update participants map when current user's username changes
+  useEffect(() => {
+    if (visitorId && username) {
+      setParticipants(prev => {
+        const next = new Map(prev);
+        next.set(visitorId, username);
+        return next;
+      });
+    }
+  }, [visitorId, username]);
+
+  // Helper to get username for a user ID
+  const getUsernameForId = useCallback((userId: string): string => {
+    return participants.get(userId) ?? "Unknown";
+  }, [participants]);
 
   const {
     pan,
@@ -71,8 +106,13 @@ export function Board({ sessionId, initialCards }: BoardProps) {
     handlers: canvasHandlers,
   } = useCanvasGestures();
 
-  useEffect(() => {
-    setUsername(generateUsername());
+  // Handle incoming name change events from realtime
+  const handleRemoteNameChange = useCallback((userId: string, newName: string) => {
+    setParticipants(prev => {
+      const next = new Map(prev);
+      next.set(userId, newName);
+      return next;
+    });
   }, []);
 
   const {
@@ -83,7 +123,8 @@ export function Board({ sessionId, initialCards }: BoardProps) {
     changeColor,
     removeCard,
     voteCard,
-  } = useRealtimeCards(sessionId, initialCards, visitorId || "");
+    broadcastNameChange,
+  } = useRealtimeCards(sessionId, initialCards, visitorId || "", username, handleRemoteNameChange);
 
   // Fit all cards in view
   const fitAllCards = useCallback(() => {
@@ -191,7 +232,6 @@ export function Board({ sessionId, initialCards }: BoardProps) {
       votes: 0,
       votedBy: [],
       createdById: visitorId,
-      createdBy: username,
       updatedAt: new Date(),
     };
 
@@ -247,7 +287,18 @@ export function Board({ sessionId, initialCards }: BoardProps) {
     setTimeout(() => setSessionIdCopied(false), 2000);
   };
 
-  if (!username || isFingerprintLoading || !visitorId) {
+  const handleUpdateUsername = async (newUsername: string) => {
+    const result = await updateUsername(newUsername);
+    if (result.success && visitorId) {
+      // Broadcast name change to other participants
+      broadcastNameChange(visitorId, newUsername.trim());
+      // Update local participants map
+      handleRemoteNameChange(visitorId, newUsername.trim());
+    }
+    return result;
+  };
+
+  if (!username || isFingerprintLoading || isUsernameLoading || !visitorId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>
@@ -275,7 +326,17 @@ export function Board({ sessionId, initialCards }: BoardProps) {
             <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>
         </Link>
-        <UserBadge username={username} avatar={getAvatarForUser(visitorId)} />
+        <EditNameDialog
+          currentName={username}
+          onSave={handleUpdateUsername}
+          trigger={
+            <UserBadge 
+              username={username} 
+              avatar={getAvatarForUser(visitorId)} 
+              editable
+            />
+          }
+        />
       </div>
 
       {/* Fixed UI - Top Right */}
@@ -329,7 +390,8 @@ export function Board({ sessionId, initialCards }: BoardProps) {
       </div>
 
       {/* Fixed UI - Bottom Right */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2">
+        <ParticipantsDialog participants={participants} currentUserId={visitorId} />
         <AddCardButton onClick={handleAddCard} />
       </div>
 
@@ -392,6 +454,7 @@ export function Board({ sessionId, initialCards }: BoardProps) {
             <IdeaCard
               key={card.id}
               card={card}
+              creatorName={getUsernameForId(card.createdById)}
               visitorId={visitorId}
               autoFocus={card.id === newCardId}
               onFocused={() => setNewCardId(null)}

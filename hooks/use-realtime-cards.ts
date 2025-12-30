@@ -46,16 +46,44 @@ type CardEvent =
   | { type: "card:typing"; id: string; content: string }
   | { type: "card:color"; id: string; color: string }
   | { type: "card:vote"; id: string; votes: number; votedBy: string[] }
-  | { type: "cards:sync"; cards: Card[] };
+  | { type: "cards:sync"; cards: Card[] }
+  | { type: "user:join"; visitorId: string; username: string }
+  | { type: "user:rename"; visitorId: string; newUsername: string };
 
 export function useRealtimeCards(
   sessionId: string,
   initialCards: Card[],
-  userId: string
+  userId: string,
+  username: string | null,
+  onUserJoinOrRename?: (visitorId: string, username: string) => void
 ) {
   const [cards, setCards] = useState<Card[]>(initialCards);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const cardsRef = useRef<Card[]>(initialCards);
+  const onUserJoinOrRenameRef = useRef(onUserJoinOrRename);
+  const usernameRef = useRef(username);
+
+  // Keep refs updated
+  useEffect(() => {
+    onUserJoinOrRenameRef.current = onUserJoinOrRename;
+  }, [onUserJoinOrRename]);
+
+  useEffect(() => {
+    usernameRef.current = username;
+    // Broadcast when username becomes available (user loaded)
+    if (username && channelRef.current) {
+      channelRef.current.send({
+        type: "broadcast",
+        event: "card-event",
+        payload: { 
+          type: "user:join", 
+          visitorId: userId, 
+          username: username,
+          odilUserId: userId 
+        },
+      });
+    }
+  }, [username, userId]);
 
   useEffect(() => {
     cardsRef.current = cards;
@@ -148,6 +176,14 @@ export function useRealtimeCards(
     [broadcast]
   );
 
+  // Broadcast name change to other participants (no local card update needed - cards reference users table)
+  const broadcastNameChange = useCallback(
+    (visitorId: string, newUsername: string) => {
+      broadcast({ type: "user:rename", visitorId, newUsername });
+    },
+    [broadcast]
+  );
+
   useEffect(() => {
     if (!userId) return;
     
@@ -221,6 +257,14 @@ export function useRealtimeCards(
                 return [...prev, ...newCards];
               });
               break;
+            case "user:join":
+              // New user joined - add them to participants map
+              onUserJoinOrRenameRef.current?.(payload.visitorId, payload.username);
+              break;
+            case "user:rename":
+              // Notify parent component to update participants map
+              onUserJoinOrRenameRef.current?.(payload.visitorId, payload.newUsername);
+              break;
           }
         }
       )
@@ -228,6 +272,20 @@ export function useRealtimeCards(
         if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           await channel.track({ odilUserId: userId });
           channelRef.current = channel;
+          
+          // Broadcast that we joined with our username
+          if (usernameRef.current) {
+            channel.send({
+              type: "broadcast",
+              event: "card-event",
+              payload: { 
+                type: "user:join", 
+                visitorId: userId, 
+                username: usernameRef.current,
+                odilUserId: userId 
+              },
+            });
+          }
         } else if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || 
                    status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
           channelRef.current = null;
@@ -249,5 +307,6 @@ export function useRealtimeCards(
     changeColor,
     removeCard,
     voteCard,
+    broadcastNameChange,
   };
 }
