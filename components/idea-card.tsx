@@ -58,6 +58,7 @@ interface Point {
 
 interface IdeaCardProps {
   card: Card;
+  creatorName: string;
   visitorId: string;
   autoFocus?: boolean;
   onFocused?: () => void;
@@ -76,6 +77,7 @@ interface IdeaCardProps {
 
 export function IdeaCard({
   card,
+  creatorName,
   visitorId,
   autoFocus,
   onFocused,
@@ -518,14 +520,14 @@ export function IdeaCard({
         <div className={`flex items-center justify-between px-2.5 sm:px-3.5 py-2 sm:py-2.5 border-t ${borderClass}`}>
           <div className="flex items-center gap-1 sm:gap-1.5">
             <Image
-              src={getAvatarForUser(card.createdBy)}
-              alt={`${card.createdBy}'s avatar`}
+              src={getAvatarForUser(card.createdById)}
+              alt={`${creatorName}'s avatar`}
               width={16}
               height={16}
               className="w-4 h-4 sm:w-5 sm:h-5"
             />
             <span className={`text-[10px] sm:text-[11px] ${mutedTextClass} truncate max-w-[55px] sm:max-w-[80px] font-medium`}>
-              {card.createdBy}
+              {creatorName}
             </span>
           </div>
           <TooltipProvider delayDuration={400}>

@@ -1,0 +1,1 @@
+ALTER TABLE "session_participants" ADD COLUMN "role" text DEFAULT 'participant' NOT NULL;

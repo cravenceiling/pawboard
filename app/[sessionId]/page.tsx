@@ -1,4 +1,4 @@
-import { getOrCreateSession, getSessionCards } from "@/app/actions";
+import { getOrCreateSession, getSessionCards, getSessionParticipants } from "@/app/actions";
 import { Board } from "@/components/board";
 import Link from "next/link";
 
@@ -38,8 +38,17 @@ export default async function SessionPage({ params }: Props) {
     );
   }
 
-  const initialCards = await getSessionCards(sessionId);
+  const [initialCards, initialParticipants] = await Promise.all([
+    getSessionCards(sessionId),
+    getSessionParticipants(sessionId),
+  ]);
 
-  return <Board sessionId={sessionId} initialCards={initialCards} />;
+  return (
+    <Board 
+      sessionId={sessionId} 
+      initialCards={initialCards} 
+      initialParticipants={initialParticipants}
+    />
+  );
 }
 
