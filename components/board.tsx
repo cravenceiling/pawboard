@@ -152,6 +152,7 @@ export function Board({
     pan,
     zoom,
     isPanning,
+    isSpacePressed,
     screenToWorld,
     zoomTo,
     resetView,
@@ -793,9 +794,11 @@ export function Board({
       {/* Viewport with gesture handlers */}
       <div
         role="application"
-        aria-label="Idea board canvas - use mouse wheel to pan, Ctrl+scroll to zoom"
+        aria-label="Idea board canvas - use mouse wheel to pan, Ctrl+scroll to zoom, hold Space+drag to pan"
         className="relative w-full h-screen overflow-hidden"
-        style={{ cursor: isPanning ? "grabbing" : "default" }}
+        style={{
+          cursor: isPanning ? "grabbing" : isSpacePressed ? "grab" : "default",
+        }}
         onMouseDown={canvasHandlers.onMouseDown}
         onWheel={canvasHandlers.onWheel}
         onTouchStart={canvasHandlers.onTouchStart}
@@ -831,6 +834,7 @@ export function Board({
               onPersistDelete={handlePersistDelete}
               screenToWorld={screenToWorld}
               zoom={zoom}
+              isSpacePressed={isSpacePressed}
             />
           ))}
 

@@ -19,6 +19,7 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
   const [pan, setPan] = useState<Point>(initialPan);
   const [zoom, setZoom] = useState<number>(initialZoom);
   const [isPanning, setIsPanning] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   const panStartRef = useRef<Point>({ x: 0, y: 0 });
   const panStartPanRef = useRef<Point>({ x: 0, y: 0 });
@@ -111,18 +112,19 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
     [zoom],
   );
 
-  // Handle middle mouse button pan
+  // Handle middle mouse button pan or space+left-click pan
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      // Middle mouse button (button === 1)
-      if (e.button === 1) {
+      // Middle mouse button (button === 1) or Space + left-click (button === 0)
+      if (e.button === 1 || (isSpacePressed && e.button === 0)) {
         e.preventDefault();
+        e.stopPropagation();
         setIsPanning(true);
         panStartRef.current = { x: e.clientX, y: e.clientY };
         panStartPanRef.current = { ...pan };
       }
     },
-    [pan],
+    [pan, isSpacePressed],
   );
 
   // Handle wheel for zoom (Ctrl/Cmd + scroll) or pan (regular scroll)
@@ -256,6 +258,13 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
         return;
       }
 
+      // Space key for pan mode
+      if (e.key === " " && !e.repeat) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+        return;
+      }
+
       switch (e.key) {
         case "0":
           if (e.metaKey || e.ctrlKey) {
@@ -279,14 +288,25 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === " ") {
+        setIsSpacePressed(false);
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [zoom, zoomTo, resetView]);
 
   return {
     pan,
     zoom,
     isPanning,
+    isSpacePressed,
     setPan,
     setZoom,
     screenToWorld,
