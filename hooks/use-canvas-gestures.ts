@@ -20,8 +20,15 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
   const [zoom, setZoom] = useState<number>(initialZoom);
   const [isPanning, setIsPanning] = useState(false);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [canvasElement, setCanvasElement] = useState<HTMLDivElement | null>(
+    null,
+  );
 
-  const canvasRef = useRef<HTMLDivElement>(null);
+  // Use callback ref to trigger effect when canvas mounts
+  const canvasRef = useCallback((node: HTMLDivElement | null) => {
+    setCanvasElement(node);
+  }, []);
+
   const panStartRef = useRef<Point>({ x: 0, y: 0 });
   const panStartPanRef = useRef<Point>({ x: 0, y: 0 });
   const lastTouchDistanceRef = useRef<number | null>(null);
@@ -131,8 +138,7 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
   // Handle wheel for zoom (Ctrl/Cmd + scroll) or pan (regular scroll)
   // Using native event listener with { passive: false } to properly prevent browser zoom
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvasElement) return;
 
     const handleWheel = (e: WheelEvent) => {
       // Always prevent default to block native browser zoom/scroll
@@ -154,9 +160,9 @@ export function useCanvasGestures(options: UseCanvasGesturesOptions = {}) {
     };
 
     // CRITICAL: { passive: false } allows preventDefault() to work
-    canvas.addEventListener("wheel", handleWheel, { passive: false });
-    return () => canvas.removeEventListener("wheel", handleWheel);
-  }, [zoom, zoomTo]);
+    canvasElement.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvasElement.removeEventListener("wheel", handleWheel);
+  }, [canvasElement, zoom, zoomTo]);
 
   // Handle touch start for two-finger gestures
   const handleTouchStart = useCallback(
