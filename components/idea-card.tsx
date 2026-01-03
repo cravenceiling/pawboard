@@ -82,6 +82,7 @@ interface IdeaCardProps {
   onPersistDelete: (id: string) => void;
   screenToWorld: (screen: Point) => Point;
   zoom: number;
+  isSpacePressed?: boolean;
 }
 
 export function IdeaCard({
@@ -103,6 +104,7 @@ export function IdeaCard({
   onPersistDelete,
   screenToWorld,
   zoom: _zoom,
+  isSpacePressed = false,
 }: IdeaCardProps) {
   void _zoom; // Reserved for future use (cursor scaling, etc.)
   const [isDragging, setIsDragging] = useState(false);
@@ -180,7 +182,8 @@ export function IdeaCard({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     // Don't start drag on middle mouse button (used for panning)
-    if (e.button === 1) return;
+    // or when space is pressed (space+click is for canvas panning)
+    if (e.button === 1 || isSpacePressed) return;
     handleDragStart(e.clientX, e.clientY);
   };
 
@@ -345,6 +348,7 @@ export function IdeaCard({
         transition: isDragging
           ? "width 200ms"
           : "left 20ms ease-out, top 20ms ease-out, width 200ms",
+        pointerEvents: isSpacePressed ? "none" : "auto",
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
