@@ -337,22 +337,27 @@ export function IdeaCard({
       : "bg-transparent group-hover:bg-stone-900/5";
 
   return (
-    <div
+    <motion.div
       ref={cardRef}
       className={`absolute group touch-none transition-[width] duration-200 ${isExpanded ? "w-72 sm:w-96" : "w-40 sm:w-56"}`}
+      initial={{ x: card.x, y: card.y }}
+      animate={{ x: card.x, y: card.y }}
+      transition={{
+        type: "spring",
+        damping: 30,
+        mass: 0.8,
+        stiffness: 350,
+      }}
       style={{
-        left: card.x,
-        top: card.y,
         cursor: allowMove ? (isDragging ? "grabbing" : "grab") : "default",
         zIndex: isDragging ? 1000 : isExpanded ? 100 : 1,
-        transition: isDragging
-          ? "width 200ms"
-          : "left 20ms ease-out, top 20ms ease-out, width 200ms",
         pointerEvents: isSpacePressed ? "none" : "auto",
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
+
+
       <div
         className="rounded-lg shadow-lg transition-shadow hover:shadow-xl"
         style={{ backgroundColor: displayColor }}
@@ -689,6 +694,6 @@ export function IdeaCard({
           </TooltipProvider>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

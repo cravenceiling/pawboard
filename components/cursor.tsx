@@ -31,6 +31,7 @@ export const Cursor = ({
   return (
     <motion.div
       className={cn("pointer-events-none absolute", className)}
+      initial={{ x, y }}
       animate={{ x, y }}
       transition={{
         type: "spring",
