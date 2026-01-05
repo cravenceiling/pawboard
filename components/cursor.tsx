@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
+import { motion } from "motion/react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 function getContrastColor(hexColor: string): string {
   const hex = hexColor.replace("#", "");
@@ -12,13 +13,15 @@ function getContrastColor(hexColor: string): string {
 
 export const Cursor = ({
   className,
-  style,
+  x,
+  y,
   color,
   cursorImage,
   name,
 }: {
   className?: string;
-  style?: React.CSSProperties;
+  x: number;
+  y: number;
   color: string;
   cursorImage: string;
   name: string;
@@ -26,7 +29,17 @@ export const Cursor = ({
   const textColor = getContrastColor(color);
 
   return (
-    <div className={cn("pointer-events-none", className)} style={style}>
+    <motion.div
+      className={cn("pointer-events-none absolute", className)}
+      initial={{ x, y }}
+      animate={{ x, y }}
+      transition={{
+        type: "spring",
+        damping: 30,
+        mass: 0.8,
+        stiffness: 350,
+      }}
+    >
       <Image
         src={cursorImage}
         alt="cursor"
@@ -44,6 +57,6 @@ export const Cursor = ({
       >
         {name}
       </div>
-    </div>
+    </motion.div>
   );
 };
