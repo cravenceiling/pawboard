@@ -612,7 +612,6 @@ export function Board({
           size="icon"
           onClick={handleAddCard}
           disabled={isLocked}
-          className="bg-card/80 backdrop-blur-sm h-9 w-9"
           title={isLocked ? "Session is locked" : "Add card (N)"}
         >
           <Plus className="w-4 h-4" />
@@ -621,7 +620,6 @@ export function Board({
           variant="outline"
           size="icon"
           onClick={handleShare}
-          className="bg-card/80 backdrop-blur-sm h-9 w-9"
           title={copied ? "Copied!" : "Share"}
         >
           {copied ? (
@@ -634,7 +632,6 @@ export function Board({
           variant="outline"
           size="icon"
           onClick={() => setCommandOpen(true)}
-          className="bg-card/80 backdrop-blur-sm h-9 w-9"
           title="Command menu (⌘K)"
         >
           <Command className="w-4 h-4" />
