@@ -26,8 +26,54 @@
 
 ```bash
 bun install
-bun dev
+cp env.example .env
+bun run db:push
 ```
+
+## Commands
+
+### Development
+
+```bash
+bun run dev          # Start dev server
+bun run build        # Production build
+bun run start        # Start production server
+bun run check        # Run linter
+```
+
+### Database
+
+```bash
+bun run db:generate  # Generate migrations from schema changes
+bun run db:migrate   # Apply pending migrations to database
+bun run db:push      # Sync schema directly to database (dev only)
+```
+
+### Supabase
+
+```bash
+bunx supabase init
+bunx supabase start
+```
+
+Create a `.env.local` file with the following variables:
+
+```
+DATABASE_URL=postgresql://...
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY=eyJ...
+GROQ_API_KEY=gsk_...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+Replace the SUPABASE variables with the values generated with `supabase start`.
+
+Create tables and apply migrations:
+
+```bash
+bun db:push
+```
+
 
 ## Tech
 
