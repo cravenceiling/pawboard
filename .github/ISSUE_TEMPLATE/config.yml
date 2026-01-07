@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/pawboard/pawboard/discussions
+    about: Ask questions, share ideas, or discuss Pawboard in our community discussions
+  - name: Security Vulnerabilities
+    url: mailto:security@pawboard.app
+    about: Please report security vulnerabilities privately via email

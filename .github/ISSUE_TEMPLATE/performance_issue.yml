@@ -1,0 +1,159 @@
+name: Performance Issue
+description: Report slowness, lag, or performance degradation
+title: "[Performance]: "
+labels: ["bug", "performance", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us identify performance bottlenecks by providing details about when and how the slowness occurs.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing.
+      placeholder: Describe the slowness, lag, or performance issue...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type of Performance Issue
+      description: What kind of performance problem are you experiencing?
+      options:
+        - Slow initial page load
+        - Lag when dragging cards
+        - Lag when typing in cards
+        - Slow canvas panning/zooming
+        - Cursor movement stuttering
+        - UI freezing/unresponsive
+        - High CPU/memory usage
+        - Battery drain (mobile/laptop)
+        - Slow after prolonged use
+        - Other
+      multiple: true
+    validations:
+      required: true
+
+  - type: input
+    id: cards
+    attributes:
+      label: Number of Cards
+      description: Approximately how many cards are on the board?
+      placeholder: e.g., 50
+    validations:
+      required: true
+
+  - type: input
+    id: participants
+    attributes:
+      label: Number of Participants
+      description: How many users were in the session?
+      placeholder: e.g., 5
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device Type
+      options:
+        - Desktop (high-end)
+        - Desktop (mid-range)
+        - Desktop (low-end/old)
+        - Laptop (high-end)
+        - Laptop (mid-range)
+        - Laptop (low-end/old)
+        - Tablet
+        - Mobile (high-end)
+        - Mobile (mid-range)
+        - Mobile (low-end)
+    validations:
+      required: true
+
+  - type: input
+    id: device-specs
+    attributes:
+      label: Device Specifications
+      description: If known, provide CPU, RAM, and GPU info
+      placeholder: e.g., M1 MacBook Pro, 16GB RAM
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Arc
+        - Brave
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: when
+    attributes:
+      label: When does the issue occur?
+      options:
+        - Immediately on page load
+        - After a few minutes of use
+        - After prolonged use (30+ minutes)
+        - Only with many cards (20+)
+        - Only with many participants (5+)
+        - During specific actions
+        - Randomly/intermittently
+    validations:
+      required: true
+
+  - type: textarea
+    id: actions
+    attributes:
+      label: Actions That Trigger Slowness
+      description: What specific actions cause the performance to degrade?
+      placeholder: |
+        - Dragging a card
+        - Zooming in/out quickly
+        - Creating multiple cards rapidly
+        - etc.
+
+  - type: dropdown
+    id: zoom-level
+    attributes:
+      label: Canvas Zoom Level
+      description: What zoom level were you at when experiencing issues?
+      options:
+        - Zoomed out (seeing all cards)
+        - Default (100%)
+        - Zoomed in
+        - Issue occurs at any zoom level
+
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Performance Measurements
+      description: If you can, provide metrics from browser DevTools (Performance tab, Memory tab)
+      placeholder: |
+        - FPS during drag: ~15fps (should be 60)
+        - Memory usage: 500MB
+        - CPU usage: 80%
+      render: shell
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console Warnings/Errors
+      description: Any performance warnings or errors in the console?
+      placeholder: Paste any relevant console output...
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context about the performance issue.
+      placeholder: Add any other context here...
