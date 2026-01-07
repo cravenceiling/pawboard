@@ -4,7 +4,7 @@ import { Card } from "@/db/schema";
 import { useMinimap } from "@/hooks/use-minimap";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface MinimapProps {
   cards: Card[];
@@ -78,16 +78,25 @@ export function Minimap({
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if (!onZoom) return;
+  // Wheel event handler (non-passive to allow preventDefault)
+  useEffect(() => {
+    const svgElement = svgRef.current;
+    if (!svgElement || !onZoom) return;
+
+    const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const rect = svgRef.current!.getBoundingClientRect();
+      const rect = svgElement.getBoundingClientRect();
       const worldPoint = getWorldFromPointerEvent(e, rect);
       onZoom(worldPoint, e.deltaY);
-    },
-    [onZoom, getWorldFromPointerEvent]
-  );
+    };
+
+    // Add non-passive listener to allow preventDefault
+    svgElement.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      svgElement.removeEventListener("wheel", handleWheel);
+    };
+  }, [onZoom, getWorldFromPointerEvent]);
 
   if (!cards.length) return null;
 
@@ -101,7 +110,6 @@ export function Minimap({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onWheel={handleWheel}
         className="rounded-xl border bg-card/95 backdrop-blur-md shadow-lg"
       >
         {/* Background */}

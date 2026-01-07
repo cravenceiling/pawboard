@@ -846,7 +846,7 @@ export function Board({
 
       {/* Minimap (Desktop Only) */}
       {window.innerWidth >= 640 && (
-        <div className="fixed bottom-24 left-6 z-50">
+        <div className="fixed top-20 right-4 z-50">
           <Minimap
             cards={cards}
             pan={pan}

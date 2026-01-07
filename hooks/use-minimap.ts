@@ -7,7 +7,7 @@ const CARD_SIZE = {
 };
 
 const MINIMAP_SIZE = {
-  desktop: 178,
+  desktop: 194,
   mobile: 165,
 };
 
