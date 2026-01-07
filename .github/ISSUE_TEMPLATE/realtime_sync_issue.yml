@@ -1,0 +1,159 @@
+name: Real-time Sync Issue
+description: Report issues with real-time collaboration, cursors, or synchronization
+title: "[Sync]: "
+labels: ["bug", "realtime", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Real-time sync issues can be tricky to debug. Please provide as much detail as possible about the collaboration scenario.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the synchronization issue you experienced.
+      placeholder: Describe what went out of sync or what wasn't updating...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sync-type
+    attributes:
+      label: Type of Sync Issue
+      description: What type of real-time feature was affected?
+      options:
+        - Card not appearing for other users
+        - Card position not syncing (drag/move)
+        - Card content not updating in real-time
+        - Card deletion not syncing
+        - Votes/reactions not syncing
+        - Cursors not visible
+        - Cursor position lagging/incorrect
+        - User presence not updating (join/leave)
+        - Session settings not propagating
+        - Complete disconnection from real-time
+        - Duplicate cards appearing
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: participants
+    attributes:
+      label: Number of Participants
+      description: How many users were in the session?
+      placeholder: e.g., 3
+    validations:
+      required: true
+
+  - type: input
+    id: cards
+    attributes:
+      label: Approximate Number of Cards
+      description: How many cards were on the board?
+      placeholder: e.g., 15
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Sync Direction
+      description: Which direction was the sync failing?
+      options:
+        - My changes not appearing for others
+        - Others' changes not appearing for me
+        - Both directions affected
+        - Intermittent/random
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. User A creates a card
+        2. User B drags the card
+        3. User A doesn't see the movement
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this happen?
+      options:
+        - Always (100% reproducible)
+        - Often (more than 50% of the time)
+        - Sometimes (less than 50%)
+        - Rarely (happened once or twice)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: recovery
+    attributes:
+      label: Did the issue resolve itself?
+      description: Did a page refresh or waiting fix the issue?
+      options:
+        - "Yes, after refreshing the page"
+        - "Yes, after waiting a few seconds"
+        - "No, the issue persisted"
+        - "Not sure / didn't try"
+    validations:
+      required: true
+
+  - type: textarea
+    id: network
+    attributes:
+      label: Network Conditions
+      description: Describe the network conditions (Wi-Fi, mobile data, VPN, etc.)
+      placeholder: |
+        - My connection: Home Wi-Fi, stable
+        - Other users' connection: Unknown
+        - Any network changes during the session?
+
+  - type: input
+    id: session-duration
+    attributes:
+      label: Session Duration
+      description: How long had the session been active when the issue occurred?
+      placeholder: e.g., 30 minutes
+
+  - type: textarea
+    id: browser-tabs
+    attributes:
+      label: Browser Tab State
+      description: Was the tab in focus? Were there multiple tabs with Pawboard open?
+      placeholder: e.g., Tab was in background for 5 minutes before noticing the issue
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console Errors
+      description: Any WebSocket or Supabase errors in the console?
+      placeholder: Paste any error messages here...
+      render: shell
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Arc
+        - Brave
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context that might help debug the sync issue.
+      placeholder: Add any other context here...
