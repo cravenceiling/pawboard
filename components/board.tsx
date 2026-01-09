@@ -39,6 +39,7 @@ import type { SessionSettings } from "@/hooks/use-realtime-cards";
 import { useRealtimeCards } from "@/hooks/use-realtime-cards";
 import { useRealtimePresence } from "@/hooks/use-realtime-presence";
 import { useSessionUsername } from "@/hooks/use-session-username";
+import { DARK_COLORS, LIGHT_COLORS } from "@/lib/colors";
 import { generateCardId } from "@/lib/nanoid";
 import { canAddCard } from "@/lib/permissions";
 import { getAvatarForUser } from "@/lib/utils";
@@ -61,10 +62,6 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const LIGHT_COLORS = ["#D4B8F0", "#FFCAB0", "#C4EDBA", "#C5E8EC", "#F9E9A8"];
-
-const DARK_COLORS = ["#9B7BC7", "#E8936A", "#7BC96A", "#7ABCC5", "#D4C468"];
 
 export interface Participant {
   visitorId: string;
@@ -179,6 +176,7 @@ export function Board({
     isSpacePressed,
     canvasRef,
     screenToWorld,
+    worldToScreen,
     zoomTo,
     resetView,
     fitToBounds,
@@ -200,9 +198,11 @@ export function Board({
       // deltaY > 0 = zoom out, deltaY < 0 = zoom in
       const zoomFactor = deltaY > 0 ? 0.9 : 1.1;
       const newZoom = Math.max(0.25, Math.min(2, zoom * zoomFactor));
-      zoomTo(newZoom, worldPoint);
+      // Convert world point to screen coordinates for zoom center
+      const screenPoint = worldToScreen(worldPoint);
+      zoomTo(newZoom, screenPoint);
     },
-    [zoom, zoomTo]
+    [zoom, zoomTo, worldToScreen]
   );
 
   // Handle incoming name change events from realtime
@@ -1009,7 +1009,9 @@ export function Board({
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 opacity-20">
                 <img
-                  src={visitorId ? getAvatarForUser(visitorId) : "/cat-purple.svg"}
+                  src={
+                    visitorId ? getAvatarForUser(visitorId) : "/cat-purple.svg"
+                  }
                   alt=""
                   className="w-full h-full"
                 />

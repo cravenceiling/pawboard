@@ -2,6 +2,7 @@
 
 import { Card } from "@/db/schema";
 import { useMinimap } from "@/hooks/use-minimap";
+import { getDisplayColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -27,9 +28,16 @@ export function Minimap({
   onZoom,
   className,
 }: MinimapProps) {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [dragging, setDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   const {
     isMobile,
@@ -48,11 +56,14 @@ export function Minimap({
 
   const colors = useMemo(
     () => ({
-      background: theme === "dark" ? "hsl(224, 71%, 4%)" : "hsl(0, 0%, 98%)",
-      pattern: theme === "dark" ? "hsl(215, 25%, 27%)" : "hsl(0, 0%, 50%)",
-      patternOpacity: theme === "dark" ? 0.25 : 0.08,
+      background: isDark ? "hsl(224, 71%, 4%)" : "hsl(0, 0%, 98%)",
+      pattern: isDark ? "hsl(215, 25%, 27%)" : "hsl(0, 0%, 50%)",
+      patternOpacity: isDark ? 0.25 : 0.08,
+      viewportFill: isDark ? "hsl(210, 40%, 25%)" : "hsl(var(--primary))",
+      viewportFillOpacity: isDark ? 0.5 : 0.3,
+      viewportStroke: isDark ? "hsl(210, 60%, 55%)" : "hsl(var(--foreground))",
     }),
-    [theme]
+    [isDark]
   );
 
   const handlePointerDown = useCallback(
@@ -134,7 +145,7 @@ export function Minimap({
           width={minimapSize}
           height={minimapSize}
           fill="url(#dots)"
-          opacity={theme === "dark" ? 0.7 : 0.4}
+          opacity={isDark ? 0.7 : 0.4}
         />
 
         {/* Cards */}
@@ -142,8 +153,9 @@ export function Minimap({
           const tl = worldToMinimap(c.x, c.y);
           const br = worldToMinimap(c.x + cardSize.w, c.y + cardSize.h);
 
+          const w = Math.max(1, br.x - tl.x);
           const h = Math.max(1, br.y - tl.y);
-          const w = Math.min(br.x - tl.x, h * 0.9);
+          const displayColor = getDisplayColor(c.color, isDark, mounted);
 
           return (
             <rect
@@ -153,7 +165,7 @@ export function Minimap({
               width={w}
               height={h}
               rx="1"
-              fill={c.color}
+              fill={displayColor}
               stroke="hsl(var(--background))"
               strokeWidth="1.5"
             />
@@ -167,9 +179,9 @@ export function Minimap({
           width={minimapViewport.w}
           height={minimapViewport.h}
           rx="4"
-          fill="hsl(var(--primary))"
-          fillOpacity="0.3"
-          stroke="hsl(var(--foreground))"
+          fill={colors.viewportFill}
+          fillOpacity={colors.viewportFillOpacity}
+          stroke={colors.viewportStroke}
           strokeWidth={isMobile ? 2.5 : 3}
         />
       </svg>

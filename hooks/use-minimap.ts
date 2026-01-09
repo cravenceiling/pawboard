@@ -1,9 +1,10 @@
 import { Card } from "@/db/schema";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
+// Card dimensions
 const CARD_SIZE = {
-  desktop: { w: 224, h: 160 },
-  mobile: { w: 160, h: 120 },
+  desktop: { w: 224, h: 206 },
+  mobile: { w: 160, h: 144 },
 };
 
 const MINIMAP_SIZE = {
