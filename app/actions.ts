@@ -495,8 +495,13 @@ export async function updateCard(
 
       after(async () => {
         try {
+          // Use NEXT_PUBLIC_SITE_URL, or VERCEL_URL (auto-set by Vercel), or localhost
           const baseUrl =
-            process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+            process.env.NEXT_PUBLIC_SITE_URL ||
+            (process.env.VERCEL_URL
+              ? `https://${process.env.VERCEL_URL}`
+              : null) ||
+            "http://localhost:3000";
           const secret = process.env.INTERNAL_API_SECRET;
 
           if (!secret) {
