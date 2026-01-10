@@ -1,5 +1,25 @@
 "use client";
 
+import NumberFlow from "@number-flow/react";
+import {
+  Check,
+  ChevronUp,
+  Copy,
+  CopyPlus,
+  GripVertical,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Smile,
+  Sparkles,
+  Undo2,
+  X,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
+import { useTheme } from "next-themes";
+import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
 import {
   Popover,
   PopoverContent,
@@ -28,26 +48,6 @@ import {
   canVote,
 } from "@/lib/permissions";
 import { getAvatarForUser } from "@/lib/utils";
-import NumberFlow from "@number-flow/react";
-import {
-  Check,
-  ChevronUp,
-  Copy,
-  CopyPlus,
-  GripVertical,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  Smile,
-  Sparkles,
-  Undo2,
-  X,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useTheme } from "next-themes";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
 
 const REACTION_EMOJIS = ["👍", "❤️", "🔥", "💡", "🎯"] as const;
 
