@@ -230,5 +230,5 @@ Next.js Dev Server
 
 ## See Also
 
-- [Contributing Guide](./CONTRIBUTING.md) - PR workflow and guidelines
-- [AGENTS.md](../AGENTS.md) - Coding conventions and patterns
+- [Contributing Guide](/docs/CONTRIBUTING.md) - PR workflow and guidelines
+- [AGENTS.md](/AGENTS.md) - Coding conventions and patterns

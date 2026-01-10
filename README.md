@@ -24,13 +24,13 @@
 
 ## Documentation
 
-- [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md) - Set up your local environment
-- [Contributing Guide](./docs/CONTRIBUTING.md) - How to contribute and PR workflow
-- [Coding Guidelines](./AGENTS.md) - Code conventions and patterns
+- [Local Development Guide](/docs/LOCAL_DEVELOPMENT.md) - Set up your local environment
+- [Contributing Guide](/docs/CONTRIBUTING.md) - How to contribute and PR workflow
+- [Coding Guidelines](/AGENTS.md) - Code conventions and patterns
 
 ## Quick Start
 
-For detailed setup instructions, see the [Local Development Guide](./docs/LOCAL_DEVELOPMENT.md).
+For detailed setup instructions, see the [Local Development Guide](/docs/LOCAL_DEVELOPMENT.md).
 
 ```bash
 # Install dependencies

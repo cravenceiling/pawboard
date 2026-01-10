@@ -28,7 +28,7 @@ main (production)
 
 ### 1. Set Up Local Environment
 
-Follow the [Local Development Guide](./LOCAL_DEVELOPMENT.md) to set up your environment.
+Follow the [Local Development Guide](/docs/LOCAL_DEVELOPMENT.md) to set up your environment.
 
 ### 2. Create a Feature Branch
 
@@ -38,7 +38,7 @@ git checkout -b feature/your-feature-name
 
 ### 3. Make Your Changes
 
-- Follow the coding conventions in [AGENTS.md](../AGENTS.md)
+- Follow the coding conventions in [AGENTS.md](/AGENTS.md)
 - Test locally with `bun dev`
 - If changing the database schema, see [Schema Changes](#schema-changes) below
 
