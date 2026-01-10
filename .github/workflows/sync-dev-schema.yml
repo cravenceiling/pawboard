@@ -5,6 +5,11 @@ name: Migrate Dev Database
 # 1. Manually via workflow_dispatch (for maintainers)
 # 2. On approved PRs from collaborators (not forks)
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 on:
   # Manual trigger - maintainers can run this after reviewing schema changes
   workflow_dispatch:
