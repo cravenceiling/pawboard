@@ -1,11 +1,11 @@
 "use client";
 
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/db/schema";
 import { useMinimap } from "@/hooks/use-minimap";
 import { getDisplayColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface MinimapProps {
   cards: Card[];
@@ -64,7 +64,7 @@ export function Minimap({
       viewportFillOpacity: isDark ? 0.18 : 0.3,
       viewportStroke: isDark ? "hsl(0, 0%, 98%)" : "hsl(var(--foreground))",
     }),
-    [isDark]
+    [isDark],
   );
 
   const handlePointerDown = useCallback(
@@ -75,7 +75,7 @@ export function Minimap({
       const worldPoint = getWorldFromPointerEvent(e, rect);
       onNavigate(worldPoint);
     },
-    [getWorldFromPointerEvent, onNavigate]
+    [getWorldFromPointerEvent, onNavigate],
   );
 
   const handlePointerMove = useCallback(
@@ -85,7 +85,7 @@ export function Minimap({
       const worldPoint = getWorldFromPointerEvent(e, rect);
       onNavigate(worldPoint);
     },
-    [dragging, getWorldFromPointerEvent, onNavigate]
+    [dragging, getWorldFromPointerEvent, onNavigate],
   );
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
