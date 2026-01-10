@@ -238,6 +238,16 @@ export function IdeaCard({
     onPersistContent(card.id, card.content);
   };
 
+  const handleContentKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
+      e.preventDefault();
+      setIsEditing(false);
+      onPersistContent(card.id, card.content);
+    }
+  };
+
   const handleColorChange = (color: string) => {
     onChangeColor(card.id, color);
     onPersistColor(card.id, color);
@@ -545,6 +555,7 @@ export function IdeaCard({
               value={card.content}
               onChange={handleContentChange}
               onBlur={handleContentBlur}
+              onKeyDown={handleContentKeyDown}
               className={`resize-none !bg-transparent dark:!bg-transparent border-none p-0 leading-relaxed shadow-none ${
                 isExpanded
                   ? "text-[13px] sm:text-[15px]"

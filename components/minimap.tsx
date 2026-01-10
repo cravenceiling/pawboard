@@ -45,6 +45,7 @@ export function Minimap({
     cardSize,
     minimapViewport,
     worldToMinimap,
+    minimapToWorld,
     getWorldFromPointerEvent,
   } = useMinimap({
     cards,
@@ -97,7 +98,30 @@ export function Minimap({
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = svgElement.getBoundingClientRect();
-      const worldPoint = getWorldFromPointerEvent(e, rect);
+
+      // Get mouse position relative to SVG
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Check if mouse is inside the viewport rectangle
+      const isInsideViewport =
+        mouseX >= minimapViewport.x &&
+        mouseX <= minimapViewport.x + minimapViewport.w &&
+        mouseY >= minimapViewport.y &&
+        mouseY <= minimapViewport.y + minimapViewport.h;
+
+      let worldPoint: { x: number; y: number };
+
+      if (isInsideViewport) {
+        // Use mouse position if inside viewport
+        worldPoint = getWorldFromPointerEvent(e, rect);
+      } else {
+        // Use center of viewport if outside
+        const viewportCenterX = minimapViewport.x + minimapViewport.w / 2;
+        const viewportCenterY = minimapViewport.y + minimapViewport.h / 2;
+        worldPoint = minimapToWorld(viewportCenterX, viewportCenterY);
+      }
+
       onZoom(worldPoint, e.deltaY);
     };
 
@@ -107,7 +131,7 @@ export function Minimap({
     return () => {
       svgElement.removeEventListener("wheel", handleWheel);
     };
-  }, [onZoom, getWorldFromPointerEvent]);
+  }, [onZoom, getWorldFromPointerEvent, minimapViewport, minimapToWorld]);
 
   if (!cards.length) return null;
 
