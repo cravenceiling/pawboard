@@ -1,24 +1,5 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
-import {
-  Check,
-  ChevronUp,
-  Copy,
-  GripVertical,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  Smile,
-  Sparkles,
-  Undo2,
-  X,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import Image from "next/image";
-import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
 import {
   Popover,
   PopoverContent,
@@ -47,6 +28,25 @@ import {
   canVote,
 } from "@/lib/permissions";
 import { getAvatarForUser } from "@/lib/utils";
+import NumberFlow from "@number-flow/react";
+import {
+  Check,
+  ChevronUp,
+  Copy,
+  GripVertical,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Smile,
+  Sparkles,
+  Undo2,
+  X,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
 
 const REACTION_EMOJIS = ["👍", "❤️", "🔥", "💡", "🎯"] as const;
 
@@ -123,7 +123,7 @@ export function IdeaCard({
     session,
     card,
     visitorId,
-    userRole ?? "participant",
+    userRole ?? "participant"
   );
   const allowChangeColor = canChangeColor(session, card, visitorId);
   const allowRefine = canRefine(session, card, visitorId);
@@ -238,6 +238,16 @@ export function IdeaCard({
     onPersistContent(card.id, card.content);
   };
 
+  const handleContentKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
+      e.preventDefault();
+      setIsEditing(false);
+      onPersistContent(card.id, card.content);
+    }
+  };
+
   const handleColorChange = (color: string) => {
     onChangeColor(card.id, color);
     onPersistColor(card.id, color);
@@ -328,8 +338,8 @@ export function IdeaCard({
       ? "bg-black/10"
       : "bg-transparent group-hover:bg-black/10"
     : isMobile
-      ? "bg-stone-900/5"
-      : "bg-transparent group-hover:bg-stone-900/5";
+    ? "bg-stone-900/5"
+    : "bg-transparent group-hover:bg-stone-900/5";
 
   return (
     <motion.div
@@ -545,6 +555,7 @@ export function IdeaCard({
               value={card.content}
               onChange={handleContentChange}
               onBlur={handleContentBlur}
+              onKeyDown={handleContentKeyDown}
               className={`resize-none !bg-transparent dark:!bg-transparent border-none p-0 leading-relaxed shadow-none ${
                 isExpanded
                   ? "text-[13px] sm:text-[15px]"
@@ -704,8 +715,8 @@ export function IdeaCard({
                     hasReacted
                       ? "bg-stone-900/15 cursor-pointer"
                       : allowReact
-                        ? `${hoverBgClass} cursor-pointer`
-                        : "opacity-50 cursor-default"
+                      ? `${hoverBgClass} cursor-pointer`
+                      : "opacity-50 cursor-default"
                   }`}
                 >
                   <span>{emoji}</span>
@@ -813,10 +824,10 @@ export function IdeaCard({
                       !allowVote
                         ? "opacity-30 cursor-not-allowed"
                         : hasVoted
-                          ? isPurpleDark
-                            ? "bg-white/20 text-white"
-                            : "bg-stone-900/15 text-stone-800"
-                          : `${hoverBgClass} cursor-pointer`
+                        ? isPurpleDark
+                          ? "bg-white/20 text-white"
+                          : "bg-stone-900/15 text-stone-800"
+                        : `${hoverBgClass} cursor-pointer`
                     }`}
                   >
                     <ChevronUp
@@ -834,10 +845,10 @@ export function IdeaCard({
                   {isOwnCard
                     ? "Can't vote on your own"
                     : session.isLocked
-                      ? "Session is locked"
-                      : hasVoted
-                        ? "Remove vote"
-                        : "Vote"}
+                    ? "Session is locked"
+                    : hasVoted
+                    ? "Remove vote"
+                    : "Vote"}
                 </TooltipContent>
               </Tooltip>
             </div>
