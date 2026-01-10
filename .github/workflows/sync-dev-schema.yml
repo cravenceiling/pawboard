@@ -88,7 +88,6 @@ jobs:
                 body: JSON.stringify({
                   name: deployment.name,
                   deploymentId: deployment.uid,
-                  target: 'preview',
                 }),
               }
             );
@@ -196,7 +195,6 @@ jobs:
                 body: JSON.stringify({
                   name: deployment.name,
                   deploymentId: deployment.uid,
-                  target: 'preview',
                 }),
               }
             );
