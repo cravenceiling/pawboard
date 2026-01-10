@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq, inArray } from "drizzle-orm";
+import { headers } from "next/headers";
 import { after } from "next/server";
 import { db } from "@/db";
 import type {
@@ -493,17 +494,22 @@ export async function updateCard(
       const cardId = id;
       const content = data.content;
 
+      // Get the host from request headers BEFORE the after() callback
+      // This is needed because env vars may not be available in after() context on Vercel
+      const headersList = await headers();
+      const host = headersList.get("host");
+      const protocol = headersList.get("x-forwarded-proto") || "https";
+      const baseUrl = host
+        ? `${protocol}://${host}`
+        : process.env.NEXT_PUBLIC_SITE_URL ||
+          (process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : null) ||
+          "http://localhost:3000";
+      const secret = process.env.INTERNAL_API_SECRET;
+
       after(async () => {
         try {
-          // Use NEXT_PUBLIC_SITE_URL, or VERCEL_URL (auto-set by Vercel), or localhost
-          const baseUrl =
-            process.env.NEXT_PUBLIC_SITE_URL ||
-            (process.env.VERCEL_URL
-              ? `https://${process.env.VERCEL_URL}`
-              : null) ||
-            "http://localhost:3000";
-          const secret = process.env.INTERNAL_API_SECRET;
-
           if (!secret) {
             console.error(
               "INTERNAL_API_SECRET not configured for embedding generation",
