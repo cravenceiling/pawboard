@@ -1,6 +1,25 @@
 "use client";
 
 import {
+  Check,
+  Command,
+  Copy,
+  Home,
+  Lock,
+  Maximize2,
+  Menu,
+  Minus,
+  Pencil,
+  Plus,
+  Settings,
+  Share2,
+  Trash,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
   createCard,
   deleteCard,
   deleteEmptyCards,
@@ -43,25 +62,6 @@ import { DARK_COLORS, LIGHT_COLORS } from "@/lib/colors";
 import { generateCardId } from "@/lib/nanoid";
 import { canAddCard } from "@/lib/permissions";
 import { getAvatarForUser } from "@/lib/utils";
-import {
-  Check,
-  Command,
-  Copy,
-  Home,
-  Lock,
-  Maximize2,
-  Menu,
-  Minus,
-  Pencil,
-  Plus,
-  Settings,
-  Share2,
-  Trash,
-} from "lucide-react";
-import { useTheme } from "next-themes";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface Participant {
   visitorId: string;
@@ -170,10 +170,17 @@ export function Board({
     return () => window.removeEventListener("resize", updateViewportSize);
   }, []);
 
-  // Track mouse position for intelligent paste
+  // Track mouse position for intelligent paste (throttled to 50ms)
   useEffect(() => {
+    let lastUpdate = 0;
+    const THROTTLE_MS = 50;
+
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      const now = Date.now();
+      if (now - lastUpdate >= THROTTLE_MS) {
+        lastUpdate = now;
+        setMousePosition({ x: e.clientX, y: e.clientY });
+      }
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
