@@ -1,25 +1,6 @@
 "use client";
 
 import {
-  Check,
-  Command,
-  Copy,
-  Home,
-  Lock,
-  Maximize2,
-  Menu,
-  Minus,
-  Pencil,
-  Plus,
-  Settings,
-  Share2,
-  Trash,
-} from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
   createCard,
   deleteCard,
   deleteEmptyCards,
@@ -62,6 +43,25 @@ import { DARK_COLORS, LIGHT_COLORS } from "@/lib/colors";
 import { generateCardId } from "@/lib/nanoid";
 import { canAddCard } from "@/lib/permissions";
 import { getAvatarForUser } from "@/lib/utils";
+import {
+  Check,
+  Command,
+  Copy,
+  Home,
+  Lock,
+  Maximize2,
+  Menu,
+  Minus,
+  Pencil,
+  Plus,
+  Settings,
+  Share2,
+  Trash,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface Participant {
   visitorId: string;
@@ -98,8 +98,13 @@ export function Board({
   const [session, setSession] = useState<Session>(initialSession);
   const [userRole, setUserRole] = useState<SessionRole | null>(null);
   const [participants, setParticipants] = useState<Map<string, string>>(
-    () => new Map(initialParticipants.map((p) => [p.visitorId, p.username])),
+    () => new Map(initialParticipants.map((p) => [p.visitorId, p.username]))
   );
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [copiedCard, setCopiedCard] = useState<{
+    content: string;
+    color: string;
+  } | null>(null);
   const hasInitializedViewRef = useRef(false);
   const { resolvedTheme } = useTheme();
   const { visitorId, isLoading: isFingerprintLoading } = useFingerprint();
@@ -166,7 +171,7 @@ export function Board({
     (userId: string): string => {
       return participants.get(userId) ?? "Unknown";
     },
-    [participants],
+    [participants]
   );
 
   const {
@@ -189,7 +194,7 @@ export function Board({
     (worldPoint: { x: number; y: number }) => {
       centerOn(worldPoint, zoom); // Keep current zoom level
     },
-    [centerOn, zoom],
+    [centerOn, zoom]
   );
 
   // Handle minimap zoom
@@ -202,7 +207,7 @@ export function Board({
       const screenPoint = worldToScreen(worldPoint);
       zoomTo(newZoom, screenPoint);
     },
-    [zoom, zoomTo, worldToScreen],
+    [zoom, zoomTo, worldToScreen]
   );
 
   // Handle incoming name change events from realtime
@@ -214,7 +219,7 @@ export function Board({
         return next;
       });
     },
-    [],
+    []
   );
 
   // Handle incoming session rename events from realtime
@@ -227,7 +232,7 @@ export function Board({
     (settings: SessionSettings) => {
       setSession((prev) => ({ ...prev, ...settings }));
     },
-    [],
+    []
   );
 
   const {
@@ -249,7 +254,7 @@ export function Board({
     username,
     handleRemoteNameChange,
     handleRemoteSessionRename,
-    handleRemoteSessionSettingsChange,
+    handleRemoteSessionSettingsChange
   );
 
   // Fit all cards in view
@@ -270,7 +275,7 @@ export function Board({
         maxX: Math.max(acc.maxX, card.x + cardWidth),
         maxY: Math.max(acc.maxY, card.y + cardHeight),
       }),
-      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
     );
 
     fitToBounds(bounds);
@@ -296,7 +301,7 @@ export function Board({
         maxX: Math.max(acc.maxX, card.x + cardWidth),
         maxY: Math.max(acc.maxY, card.y + cardHeight),
       }),
-      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
     );
 
     // Center on cards at 100% zoom
@@ -493,7 +498,7 @@ export function Board({
     const { session: updatedSession, error } = await updateSessionName(
       sessionId,
       newName,
-      visitorId,
+      visitorId
     );
     if (updatedSession && !error) {
       // Update local state
@@ -515,7 +520,7 @@ export function Board({
     const { session: updatedSession, error } = await updateSessionSettings(
       sessionId,
       settings,
-      visitorId,
+      visitorId
     );
     if (updatedSession && !error) {
       // Update local state
@@ -548,7 +553,7 @@ export function Board({
 
     const { deletedIds, deletedCount, error } = await deleteEmptyCards(
       sessionId,
-      visitorId,
+      visitorId
     );
 
     if (error) {
@@ -563,7 +568,106 @@ export function Board({
     return { success: true, deletedCount };
   };
 
-  // Keyboard shortcut for new card (key "N")
+  const handleCopyCard = useCallback((card: Card) => {
+    setCopiedCard({
+      content: card.content,
+      color: card.color,
+    });
+    setSelectedCardId(card.id);
+  }, []);
+
+  const handlePasteCard = useCallback(async () => {
+    if (!copiedCard || !username || !visitorId) return;
+
+    // Check if session allows adding cards
+    if (!canAddCard(session)) return;
+
+    playSound();
+
+    const isMobile = window.innerWidth < 640;
+    const cardWidth = isMobile ? CARD_WIDTH_MOBILE : CARD_WIDTH;
+    const cardHeight = isMobile ? CARD_HEIGHT_MOBILE : CARD_HEIGHT;
+
+    // Position at screen center with slight offset
+    const screenCenter = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    };
+    const worldCenter = screenToWorld(screenCenter);
+    const offset = 20; // Small offset to avoid exact overlap
+    const x = worldCenter.x - cardWidth / 2 + offset;
+    const y = worldCenter.y - cardHeight / 2 + offset;
+
+    const cardId = generateCardId();
+    const newCard: Card = {
+      id: cardId,
+      sessionId,
+      content: copiedCard.content,
+      color: copiedCard.color,
+      x,
+      y,
+      votes: 0,
+      votedBy: [],
+      reactions: {},
+      createdById: visitorId,
+      updatedAt: new Date(),
+    };
+
+    setNewCardId(cardId);
+    addCard(newCard);
+    await createCard(newCard, visitorId);
+  }, [
+    copiedCard,
+    username,
+    visitorId,
+    session,
+    playSound,
+    screenToWorld,
+    sessionId,
+    addCard,
+  ]);
+
+  const handleDuplicateCard = useCallback(
+    async (card: Card) => {
+      if (!username || !visitorId) return;
+
+      // Check if session allows adding cards
+      if (!canAddCard(session)) return;
+
+      playSound();
+
+      const isMobile = window.innerWidth < 640;
+      const cardWidth = isMobile ? CARD_WIDTH_MOBILE : CARD_WIDTH;
+      const cardHeight = isMobile ? CARD_HEIGHT_MOBILE : CARD_HEIGHT;
+
+      // Position with slight offset from original
+      const offset = 30;
+      const x = card.x + offset;
+      const y = card.y + offset;
+
+      const cardId = generateCardId();
+      const newCard: Card = {
+        id: cardId,
+        sessionId,
+        content: card.content,
+        color: card.color,
+        x,
+        y,
+        votes: 0,
+        votedBy: [],
+        reactions: {},
+        createdById: visitorId,
+        updatedAt: new Date(),
+      };
+
+      setNewCardId(cardId);
+      addCard(newCard);
+      await createCard(newCard, visitorId);
+    },
+    [username, visitorId, session, playSound, sessionId, addCard]
+  );
+
+  // Keyboard shortcuts for new card (key "N"), copy (Ctrl+C), and paste (Ctrl+V)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Skip if user is typing in an input or textarea
@@ -579,6 +683,27 @@ export function Board({
         return;
       }
 
+      // Ctrl+C or Cmd+C to copy selected card
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        if (selectedCardId) {
+          const card = cards.find((c) => c.id === selectedCardId);
+          if (card) {
+            e.preventDefault();
+            handleCopyCard(card);
+          }
+        }
+        return;
+      }
+
+      // Ctrl+V or Cmd+V to paste card
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        if (copiedCard) {
+          e.preventDefault();
+          handlePasteCard();
+        }
+        return;
+      }
+
       // "N" to create a new card
       if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
@@ -587,7 +712,15 @@ export function Board({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [commandOpen, handleAddCard]);
+  }, [
+    commandOpen,
+    handleAddCard,
+    selectedCardId,
+    cards,
+    handleCopyCard,
+    copiedCard,
+    handlePasteCard,
+  ]);
 
   if (!username || isFingerprintLoading || isUsernameLoading || !visitorId) {
     return (
@@ -956,7 +1089,19 @@ export function Board({
         style={{
           cursor: isPanning ? "grabbing" : isSpacePressed ? "grab" : "default",
         }}
-        onMouseDown={canvasHandlers.onMouseDown}
+        onMouseDown={(e) => {
+          // Deselect card if clicking directly on canvas (not on a card)
+          const target = e.target as HTMLElement;
+          if (
+            !target.closest("[data-card]") &&
+            !target.closest("button") &&
+            !isSpacePressed &&
+            e.button === 0
+          ) {
+            setSelectedCardId(null);
+          }
+          canvasHandlers.onMouseDown(e);
+        }}
         onTouchStart={canvasHandlers.onTouchStart}
         onTouchMove={canvasHandlers.onTouchMove}
         onTouchEnd={canvasHandlers.onTouchEnd}
@@ -979,6 +1124,9 @@ export function Board({
               visitorId={visitorId}
               autoFocus={card.id === newCardId}
               onFocused={() => setNewCardId(null)}
+              isSelected={card.id === selectedCardId}
+              onSelect={() => setSelectedCardId(card.id)}
+              onDuplicate={handleDuplicateCard}
               onMove={moveCard}
               onType={typeCard}
               onChangeColor={changeColor}

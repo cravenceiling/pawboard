@@ -1,24 +1,5 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
-import {
-  Check,
-  ChevronUp,
-  Copy,
-  GripVertical,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  Smile,
-  Sparkles,
-  Undo2,
-  X,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import Image from "next/image";
-import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
 import {
   Popover,
   PopoverContent,
@@ -47,6 +28,26 @@ import {
   canVote,
 } from "@/lib/permissions";
 import { getAvatarForUser } from "@/lib/utils";
+import NumberFlow from "@number-flow/react";
+import {
+  Check,
+  ChevronUp,
+  Copy,
+  CopyPlus,
+  GripVertical,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Smile,
+  Sparkles,
+  Undo2,
+  X,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useTheme } from "next-themes";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
 
 const REACTION_EMOJIS = ["👍", "❤️", "🔥", "💡", "🎯"] as const;
 
@@ -63,6 +64,9 @@ interface IdeaCardProps {
   visitorId: string;
   autoFocus?: boolean;
   onFocused?: () => void;
+  isSelected?: boolean;
+  onSelect?: () => void;
+  onDuplicate?: (card: Card) => void;
   onMove: (id: string, x: number, y: number) => void;
   onType: (id: string, content: string) => void;
   onChangeColor: (id: string, color: string) => void;
@@ -86,6 +90,9 @@ export function IdeaCard({
   visitorId,
   autoFocus,
   onFocused,
+  isSelected = false,
+  onSelect,
+  onDuplicate,
   onMove,
   onType,
   onChangeColor,
@@ -123,7 +130,7 @@ export function IdeaCard({
     session,
     card,
     visitorId,
-    userRole ?? "participant",
+    userRole ?? "participant"
   );
   const allowChangeColor = canChangeColor(session, card, visitorId);
   const allowRefine = canRefine(session, card, visitorId);
@@ -168,6 +175,19 @@ export function IdeaCard({
     // Don't start drag on middle mouse button (used for panning)
     // or when space is pressed (space+click is for canvas panning)
     if (e.button === 1 || isSpacePressed) return;
+
+    // Select card on click (but not if clicking on interactive elements)
+    const target = e.target as HTMLElement;
+    const isInteractiveElement =
+      target.closest("button") ||
+      target.closest("textarea") ||
+      target.closest("[role='button']") ||
+      target.closest(".popover-content");
+
+    if (!isInteractiveElement && onSelect) {
+      onSelect();
+    }
+
     handleDragStart(e.clientX, e.clientY);
   };
 
@@ -239,7 +259,7 @@ export function IdeaCard({
   };
 
   const handleContentKeyDown = (
-    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    e: React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
       e.preventDefault();
@@ -256,6 +276,12 @@ export function IdeaCard({
   const handleDelete = () => {
     onDelete(card.id);
     onPersistDelete(card.id);
+  };
+
+  const handleDuplicate = () => {
+    if (onDuplicate) {
+      onDuplicate(card);
+    }
   };
 
   const handleVote = () => {
@@ -338,12 +364,13 @@ export function IdeaCard({
       ? "bg-black/10"
       : "bg-transparent group-hover:bg-black/10"
     : isMobile
-      ? "bg-stone-900/5"
-      : "bg-transparent group-hover:bg-stone-900/5";
+    ? "bg-stone-900/5"
+    : "bg-transparent group-hover:bg-stone-900/5";
 
   return (
     <motion.div
       ref={cardRef}
+      data-card
       className={`absolute group touch-none transition-[width] duration-200 ${
         isExpanded ? "w-72 sm:w-96" : "w-40 sm:w-56"
       }`}
@@ -364,7 +391,9 @@ export function IdeaCard({
       onTouchStart={handleTouchStart}
     >
       <div
-        className="rounded-lg shadow-lg transition-shadow hover:shadow-xl relative overflow-hidden"
+        className={`rounded-lg shadow-lg transition-shadow hover:shadow-xl relative overflow-hidden ${
+          isSelected ? "ring-2 ring-offset-2 ring-primary" : ""
+        }`}
         style={{ backgroundColor: displayColor }}
       >
         {/* Cat silhouette background based on card creator's avatar */}
@@ -516,6 +545,28 @@ export function IdeaCard({
                   {isExpanded ? "Collapse" : "Expand"}
                 </TooltipContent>
               </Tooltip>
+              {onDuplicate && allowEdit && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <motion.button
+                      type="button"
+                      onClick={handleDuplicate}
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }}
+                      className={`p-1 sm:p-1.5 rounded-md ${
+                        isMobile
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100"
+                      } ${hoverBgClass} transition-all cursor-pointer`}
+                    >
+                      <CopyPlus
+                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconClass}`}
+                      />
+                    </motion.button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Duplicate</TooltipContent>
+                </Tooltip>
+              )}
               {allowDelete && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -715,8 +766,8 @@ export function IdeaCard({
                     hasReacted
                       ? "bg-stone-900/15 cursor-pointer"
                       : allowReact
-                        ? `${hoverBgClass} cursor-pointer`
-                        : "opacity-50 cursor-default"
+                      ? `${hoverBgClass} cursor-pointer`
+                      : "opacity-50 cursor-default"
                   }`}
                 >
                   <span>{emoji}</span>
@@ -824,10 +875,10 @@ export function IdeaCard({
                       !allowVote
                         ? "opacity-30 cursor-not-allowed"
                         : hasVoted
-                          ? isPurpleDark
-                            ? "bg-white/20 text-white"
-                            : "bg-stone-900/15 text-stone-800"
-                          : `${hoverBgClass} cursor-pointer`
+                        ? isPurpleDark
+                          ? "bg-white/20 text-white"
+                          : "bg-stone-900/15 text-stone-800"
+                        : `${hoverBgClass} cursor-pointer`
                     }`}
                   >
                     <ChevronUp
@@ -845,10 +896,10 @@ export function IdeaCard({
                   {isOwnCard
                     ? "Can't vote on your own"
                     : session.isLocked
-                      ? "Session is locked"
-                      : hasVoted
-                        ? "Remove vote"
-                        : "Vote"}
+                    ? "Session is locked"
+                    : hasVoted
+                    ? "Remove vote"
+                    : "Vote"}
                 </TooltipContent>
               </Tooltip>
             </div>
