@@ -1,11 +1,11 @@
 "use client";
 
-import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/db/schema";
 import { useMinimap } from "@/hooks/use-minimap";
 import { getDisplayColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface MinimapProps {
   cards: Card[];
@@ -45,6 +45,7 @@ export function Minimap({
     cardSize,
     minimapViewport,
     worldToMinimap,
+    minimapToWorld,
     getWorldFromPointerEvent,
   } = useMinimap({
     cards,
@@ -63,7 +64,7 @@ export function Minimap({
       viewportFillOpacity: isDark ? 0.18 : 0.3,
       viewportStroke: isDark ? "hsl(0, 0%, 98%)" : "hsl(var(--foreground))",
     }),
-    [isDark],
+    [isDark]
   );
 
   const handlePointerDown = useCallback(
@@ -74,7 +75,7 @@ export function Minimap({
       const worldPoint = getWorldFromPointerEvent(e, rect);
       onNavigate(worldPoint);
     },
-    [getWorldFromPointerEvent, onNavigate],
+    [getWorldFromPointerEvent, onNavigate]
   );
 
   const handlePointerMove = useCallback(
@@ -84,7 +85,7 @@ export function Minimap({
       const worldPoint = getWorldFromPointerEvent(e, rect);
       onNavigate(worldPoint);
     },
-    [dragging, getWorldFromPointerEvent, onNavigate],
+    [dragging, getWorldFromPointerEvent, onNavigate]
   );
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
@@ -97,7 +98,30 @@ export function Minimap({
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = svgElement.getBoundingClientRect();
-      const worldPoint = getWorldFromPointerEvent(e, rect);
+
+      // Get mouse position relative to SVG
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Check if mouse is inside the viewport rectangle
+      const isInsideViewport =
+        mouseX >= minimapViewport.x &&
+        mouseX <= minimapViewport.x + minimapViewport.w &&
+        mouseY >= minimapViewport.y &&
+        mouseY <= minimapViewport.y + minimapViewport.h;
+
+      let worldPoint: { x: number; y: number };
+
+      if (isInsideViewport) {
+        // Use mouse position if inside viewport
+        worldPoint = getWorldFromPointerEvent(e, rect);
+      } else {
+        // Use center of viewport if outside
+        const viewportCenterX = minimapViewport.x + minimapViewport.w / 2;
+        const viewportCenterY = minimapViewport.y + minimapViewport.h / 2;
+        worldPoint = minimapToWorld(viewportCenterX, viewportCenterY);
+      }
+
       onZoom(worldPoint, e.deltaY);
     };
 
@@ -107,7 +131,7 @@ export function Minimap({
     return () => {
       svgElement.removeEventListener("wheel", handleWheel);
     };
-  }, [onZoom, getWorldFromPointerEvent]);
+  }, [onZoom, getWorldFromPointerEvent, minimapViewport, minimapToWorld]);
 
   if (!cards.length) return null;
 
