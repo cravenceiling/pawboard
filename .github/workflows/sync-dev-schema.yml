@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to apply migrations from'
+        description: "PR number to apply migrations from"
         required: true
         type: number
 
@@ -29,7 +29,7 @@ jobs:
     name: Manual database migration
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: development  # Requires environment approval if configured
+    environment: development # Requires environment approval if configured
 
     steps:
       - name: Checkout PR
@@ -48,6 +48,25 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
 
+      - name: Get PR branch name
+        id: pr-branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: ${{ inputs.pr_number }}
+            });
+            core.setOutput('branch', pr.head.ref);
+
+      - name: Trigger Vercel redeploy
+        run: npx vercel redeploy --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
@@ -56,7 +75,7 @@ jobs:
               issue_number: ${{ inputs.pr_number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'Database migrations applied to dev environment by @${{ github.actor }}'
+              body: 'Database migrations applied to dev environment by @${{ github.actor }}. Vercel redeploy triggered.'
             })
 
   # Job 2: Auto-migrate on PR approval (only for trusted contributors)
@@ -67,7 +86,7 @@ jobs:
       github.event.review.state == 'approved' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    environment: development  # Requires environment approval if configured
+    environment: development # Requires environment approval if configured
 
     steps:
       - name: Check if migrations changed
@@ -80,7 +99,7 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number
             });
-            const migrationsChanged = files.some(f => 
+            const migrationsChanged = files.some(f =>
               f.filename.startsWith('drizzle/') || f.filename === 'db/schema.ts'
             );
             core.setOutput('changed', migrationsChanged);
@@ -106,6 +125,14 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
 
+      - name: Trigger Vercel redeploy
+        if: steps.check-migrations.outputs.changed == 'true'
+        run: npx vercel redeploy --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
       - name: Comment on PR
         if: steps.check-migrations.outputs.changed == 'true'
         uses: actions/github-script@v7
@@ -115,5 +142,5 @@ jobs:
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'Database migrations applied to dev environment (triggered by approval from @${{ github.event.review.user.login }})'
+              body: 'Database migrations applied to dev environment (triggered by approval from @${{ github.event.review.user.login }}). Vercel redeploy triggered.'
             })
