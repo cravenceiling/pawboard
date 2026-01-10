@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCatSound } from "@/hooks/use-cat-sound";
 import { generateSessionId } from "@/lib/nanoid";
+import { useFingerprint } from "@/hooks/use-fingerprint";
+import { getOrCreateUser } from "./actions";
 
 const cursorImages = [
   "/paw-cursor-black.png",
@@ -249,15 +251,34 @@ export default function Home() {
   const [dragging, setDragging] = useState<string | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
+  const { visitorId, isLoading: isFingerprintLoading } = useFingerprint();
+
   const handleCreateSession = async () => {
-    playSound();
     setIsCreating(true);
+    playSound();
+
+    if (!visitorId) return;
+
+    const { user, error: userError } = await getOrCreateUser(visitorId);
+    if (userError || !user) {
+      console.error("Failed to create user:", userError);
+      return;
+    }
     const id = generateSessionId();
     router.push(`/${id}`);
   };
 
-  const handleJoinSession = (e: React.FormEvent) => {
+  const handleJoinSession = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!visitorId) return;
+
+    const { user, error: userError } = await getOrCreateUser(visitorId);
+    if (userError || !user) {
+      console.error("Failed to create user:", userError);
+      return;
+    }
+
     if (sessionId.trim()) {
       playSound();
       router.push(`/${sessionId.trim()}`);
@@ -359,11 +380,10 @@ export default function Home() {
       <div
         ref={catBlueRef}
         onMouseDown={(e) => handleMouseDown(e, "blue")}
-        className={`fixed z-[60] select-none ${
-          animationPhase === "complete"
-            ? "cursor-grab active:cursor-grabbing"
-            : "cursor-default"
-        } ${activeCat >= 0 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
+        className={`fixed z-[60] select-none ${animationPhase === "complete"
+          ? "cursor-grab active:cursor-grabbing"
+          : "cursor-default"
+          } ${activeCat >= 0 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
         style={{
           left: `${catBluePos.x}px`,
           top: `${catBluePos.y}px`,
@@ -381,11 +401,10 @@ export default function Home() {
       <div
         ref={catPurpleRef}
         onMouseDown={(e) => handleMouseDown(e, "purple")}
-        className={`fixed z-[60] select-none ${
-          animationPhase === "complete"
-            ? "cursor-grab active:cursor-grabbing"
-            : "cursor-default"
-        } ${activeCat >= 1 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
+        className={`fixed z-[60] select-none ${animationPhase === "complete"
+          ? "cursor-grab active:cursor-grabbing"
+          : "cursor-default"
+          } ${activeCat >= 1 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
         style={{
           left: `${catPurplePos.x}px`,
           top: `${catPurplePos.y}px`,
@@ -403,11 +422,10 @@ export default function Home() {
       <div
         ref={catYellowRef}
         onMouseDown={(e) => handleMouseDown(e, "yellow")}
-        className={`fixed z-[60] select-none ${
-          animationPhase === "complete"
-            ? "cursor-grab active:cursor-grabbing"
-            : "cursor-default"
-        } ${activeCat >= 2 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
+        className={`fixed z-[60] select-none ${animationPhase === "complete"
+          ? "cursor-grab active:cursor-grabbing"
+          : "cursor-default"
+          } ${activeCat >= 2 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
         style={{
           left: `${catYellowPos.x}px`,
           top: `${catYellowPos.y}px`,
@@ -425,11 +443,10 @@ export default function Home() {
       <div
         ref={catGreenRef}
         onMouseDown={(e) => handleMouseDown(e, "green")}
-        className={`fixed z-[60] select-none ${
-          animationPhase === "complete"
-            ? "cursor-grab active:cursor-grabbing"
-            : "cursor-default"
-        } ${activeCat >= 3 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
+        className={`fixed z-[60] select-none ${animationPhase === "complete"
+          ? "cursor-grab active:cursor-grabbing"
+          : "cursor-default"
+          } ${activeCat >= 3 || animationPhase === "complete" ? "opacity-100" : "opacity-0"}`}
         style={{
           left: `${catGreenPos.x}px`,
           top: `${catGreenPos.y}px`,
@@ -460,11 +477,11 @@ export default function Home() {
         <div className="space-y-3">
           <Button
             onClick={handleCreateSession}
-            disabled={isCreating}
+            disabled={isCreating || isFingerprintLoading}
             className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-all"
           >
-            {isCreating ? (
-              "Creating..."
+            {isCreating || isFingerprintLoading ? (
+              "Loading..."
             ) : (
               <>
                 Start new session

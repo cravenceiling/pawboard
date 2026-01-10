@@ -1,14 +1,17 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   integer,
   jsonb,
+  pgPolicy,
   pgTable,
   primaryKey,
   real,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { authenticatedRole } from "drizzle-orm/supabase";
+
 
 // Permission types
 export type MovePermission = "creator" | "everyone";
@@ -20,11 +23,25 @@ export const users = pgTable("users", {
   id: text("id").primaryKey(), // visitorId from fingerprint
   username: text("username").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  pgPolicy("users are readable", {
+    for: 'select',
+    to: authenticatedRole,
+    using: sql`true`,
+  }),
+
+  pgPolicy("users can update their own profile", {
+    for: 'update',
+    to: authenticatedRole,
+    using: sql`${table.id} = auth.jwt() -> 'user_metadata' ->> 'visitor_id'`,
+    withCheck: sql`${table.id} = auth.jwt() -> 'user_metadata' ->> 'visitor_id'`,
+  }),
+]);
 
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  createdById: text("created_by_id").notNull().references(() => users.id),
   isLocked: boolean("is_locked").notNull().default(false),
   movePermission: text("move_permission")
     .$type<MovePermission>()
@@ -35,7 +52,19 @@ export const sessions = pgTable("sessions", {
     .notNull()
     .default("creator"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  pgPolicy("session is readable by anyone", {
+    for: 'select',
+    to: authenticatedRole,
+    using: sql`true`,
+  }),
+  pgPolicy("only creator can update session permissions", {
+    for: 'update',
+    to: authenticatedRole,
+    using: sql`auth.jwt()->'user_metadata'->>'visitor_id' = ${table.createdById}`,
+    withCheck: sql`auth.jwt()->'user_metadata'->>'visitor_id' = ${table.createdById}`,
+  }),
+]);
 
 export const sessionParticipants = pgTable(
   "session_participants",
@@ -49,7 +78,19 @@ export const sessionParticipants = pgTable(
     role: text("role").notNull().default("participant"), // "creator" | "participant"
     joinedAt: timestamp("joined_at").defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.sessionId] })],
+  (table) => [
+    primaryKey({ columns: [table.userId, table.sessionId] }),
+    pgPolicy("session participants are readable by anyone", {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    pgPolicy("user can join a session", {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} = auth.jwt()->'user_metadata'->>'visitor_id'`,
+    }),
+  ],
 );
 
 export const cards = pgTable("cards", {
@@ -66,8 +107,56 @@ export const cards = pgTable("cards", {
   createdById: text("created_by_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+}, (table) => [
+  pgPolicy("cards are readable by anyone", {
+    for: 'select',
+    to: authenticatedRole,
+    using: sql`true`,
+  }),
+  pgPolicy("anyone can create a card", {
+    for: 'insert',
+    to: authenticatedRole,
+    withCheck: sql`${table.createdById} = auth.jwt()->'user_metadata'->>'visitor_id'`,
+  }),
+  // Move card:
+  // - creator always
+  // - OR anyone if session.move_permission = 'everyone'
+  pgPolicy("update card if allowed", {
+    for: 'update',
+    to: authenticatedRole,
+    using: sql`
+      ${table.createdById} = auth.jwt()->'user_metadata'->>'visitor_id'
+      or exists (
+        select 1
+        from sessions s
+        where s.id = ${table.sessionId}
+        and s.move_permission = 'everyone'
+      )`,
+    // prevent ownership changes
+    withCheck: sql`auth.jwt() -> 'user_metadata' ->> 'visitor_id' = ${table.createdById}`,
+  }),
+
+  pgPolicy("session creator can delete empty cards", {
+    for: 'delete',
+    to: authenticatedRole,
+    using: sql`
+      (${table.content} = '')
+      and exists (
+        select 1
+        from sessions s
+        where s.id = ${table.sessionId}
+        and s.created_by_id = auth.jwt() -> 'user_metadata' ->> 'visitor_id'`,
+    withCheck: sql`${table.content} = ''`,
+  }),
+
+  pgPolicy("card creator can delete own cards", {
+    for: 'delete',
+    to: authenticatedRole,
+    using: sql`${table.createdById} = auth.jwt() -> 'user_metadata' ->> 'visitor_id'`,
+    withCheck: sql`${table.createdById} = auth.jwt() -> 'user_metadata' ->> 'visitor_id'`,
+  }),
+]);
 
 // Relations
 

@@ -21,10 +21,25 @@ import {
   canMoveCard,
   canVote,
 } from "@/lib/permissions";
+import { createClient } from "@/lib/supabase/server";
 
 // Session Actions
 
 export async function getOrCreateSession(id: string) {
+  const { user, error: userError } = await getOrCreateAnonUser();
+
+  if (userError || !user) {
+    console.error("Failed to get or create user in getOrCreateSession:", userError);
+    return { session: null, error: "Failed to get or create session" };
+  }
+
+  const userId = user.user_metadata['visitor_id'] as string;
+
+  if (userId.length === 0) {
+    console.error("Failed to get user ID in getOrCreateSession:", userId);
+    return { session: null, error: "Failed to get user ID" };
+  }
+
   try {
     let session = await db.query.sessions.findFirst({
       where: eq(sessions.id, id),
@@ -33,7 +48,7 @@ export async function getOrCreateSession(id: string) {
     if (!session) {
       const [newSession] = await db
         .insert(sessions)
-        .values({ id, name: generateSessionName() })
+        .values({ id, name: generateSessionName(), createdById: userId })
         .returning();
       session = newSession;
     }
@@ -203,6 +218,35 @@ export async function getUserRoleInSession(
 
 // User Actions
 
+async function getOrCreateAnonUser(userId?: string) {
+  const supabase = await createClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userData.user) {
+    return { user: userData.user, error: null };
+  }
+
+  if (userError) {
+    console.error("Failed to get user in getOrCreateAnonUser:", userError);
+    return { user: null, error: 'Failed to sign in anonymously' };
+  }
+
+  if (!userId) {
+    return { user: null, error: "No userId provided" };
+  }
+
+  const { data, error } = await supabase.auth.signInAnonymously({
+    options: { data: { visitor_id: userId } },
+  });
+
+  if (error || !data?.session || !data?.user) {
+    console.error("Failed to sign in anonymously in getOrCreateAnonUser:", error);
+    return { user: null, error: "Failed to sign in anonymously" };
+  }
+
+  return { user: data.user, error: null };
+}
+
 export async function getOrCreateUser(
   userId: string,
 ): Promise<{ user: User | null; error: string | null }> {
@@ -220,6 +264,12 @@ export async function getOrCreateUser(
         })
         .returning();
       user = newUser;
+    }
+
+    // create a new anon user if necessary
+    const { error: SupabaseError } = await getOrCreateAnonUser(userId);
+    if (SupabaseError) {
+      return { user: null, error: "Failed to get or create user" };
     }
 
     return { user, error: null };

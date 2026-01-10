@@ -36,6 +36,20 @@
       "when": 1767399554216,
       "tag": "0004_sticky_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767994566913,
+      "tag": "0005_wakeful_warhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1768006736285,
+      "tag": "0006_lush_energizer",
+      "breakpoints": true
     }
   ]
 }
