@@ -1,6 +1,5 @@
 import { embed, embedMany } from "ai";
 
-
 /**
  * Generate embedding for a single text
  */

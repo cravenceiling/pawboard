@@ -1,7 +1,7 @@
 "use server";
 
-import { after } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
+import { after } from "next/server";
 import { db } from "@/db";
 import type {
   Card,
@@ -776,8 +776,8 @@ export async function deleteEmptyCards(
 
 // Clustering Actions
 
-import { clusterAndPosition, type CardPosition } from "@/lib/clustering";
 import { isNotNull } from "drizzle-orm";
+import { type CardPosition, clusterAndPosition } from "@/lib/clustering";
 
 export async function clusterCards(
   sessionId: string,
