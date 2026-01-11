@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Crown, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -112,9 +112,15 @@ export default function SessionsPage() {
                         <h2 className="text-lg font-semibold truncate">
                           {session.name}
                         </h2>
-                        {session.role === "creator" && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                            Creator
+                        {session.role === "creator" ? (
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary font-semibold border border-primary/20">
+                            <Crown className="w-3 h-3" />
+                            My Session
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">
+                            <Users className="w-3 h-3" />
+                            Participant
                           </span>
                         )}
                       </div>
