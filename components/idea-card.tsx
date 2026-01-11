@@ -889,6 +889,7 @@ export function IdeaCard({
               width={16}
               height={16}
               className="w-4 h-4 sm:w-5 sm:h-5"
+              draggable={false}
             />
             <span
               className={`text-[10px] sm:text-[11px] ${mutedTextClass} truncate max-w-13.75 sm:max-w-20 font-medium`}
