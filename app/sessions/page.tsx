@@ -1,13 +1,15 @@
 "use client";
 
-import { ArrowLeft, Crown, Users } from "lucide-react";
+import { ArrowLeft, Crown, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getUserSessions } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import type { SessionRole } from "@/db/schema";
+import { useCatSound } from "@/hooks/use-cat-sound";
 import { useFingerprint } from "@/hooks/use-fingerprint";
+import { generateSessionId } from "@/lib/nanoid";
 
 interface SessionData {
   id: string;
@@ -21,10 +23,12 @@ interface SessionData {
 
 export default function SessionsPage() {
   const router = useRouter();
+  const playSound = useCatSound();
   const { visitorId, isLoading: fingerprintLoading } = useFingerprint();
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     async function loadSessions() {
@@ -46,6 +50,13 @@ export default function SessionsPage() {
       loadSessions();
     }
   }, [visitorId]);
+
+  const handleCreateSession = () => {
+    playSound();
+    setIsCreating(true);
+    const id = generateSessionId();
+    router.push(`/${id}`);
+  };
 
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
@@ -80,16 +91,32 @@ export default function SessionsPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push("/")}
+              className="rounded-full"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">My Sessions</h1>
+          </div>
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push("/")}
-            className="rounded-full"
+            onClick={handleCreateSession}
+            disabled={isCreating}
+            className="rounded-xl"
           >
-            <ArrowLeft className="w-5 h-5" />
+            {isCreating ? (
+              "Creating..."
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                New Session
+              </>
+            )}
           </Button>
-          <h1 className="text-3xl font-bold">My Sessions</h1>
         </div>
 
         {sessions.length === 0 ? (
